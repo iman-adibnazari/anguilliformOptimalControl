@@ -16,7 +16,7 @@ def createScene(rootNode):
     finger.addObject('EulerImplicit', name='odesolver')
     finger.addObject('SparseLDLSolver', name='directSolver')
 
-    finger.addObject('MeshGmshLoader', name='loader', filename='Module_body3.msh')
+    finger.addObject('MeshGmshLoader', name='loader', filename='../meshes/Module_body3.msh')
     finger.addObject('MeshTopology', src='@loader', name='container')
     finger.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
     finger.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
@@ -24,7 +24,7 @@ def createScene(rootNode):
     finger.addObject('UniformMass', totalMass=0.0008)
     # Define visual model
     segmentVisual = finger.addChild("VisualModel")
-    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename='Module_body_visual.stl')
+    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename='../meshes/Module_body_visual.stl')
     segmentVisual.addObject('OglModel', name='visualModel', src='@segmentVisualLoader', color=[0.5,0.5,0.5, .25], updateNormals=False)
     segmentVisual.addObject('BarycentricMapping')
     
@@ -51,7 +51,7 @@ def createScene(rootNode):
 
     # Pneumatic actuation chamber 1
     cavity = finger.addChild('cavity')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename='Module_cavity1.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename='../meshes/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
     cavity.addObject('MechanicalObject', name='cavity')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
@@ -62,7 +62,7 @@ def createScene(rootNode):
 
     # Pneumatic actuation chamber 2
     cavity = finger.addChild('cavity2')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename='Module_cavity2.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename='../meshes/Module_cavity2.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader2', name='cavityMesh2')
     cavity.addObject('MechanicalObject', name='cavity2')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint2', template='Vec3', value=1,
