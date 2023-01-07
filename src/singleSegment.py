@@ -1,7 +1,28 @@
 import Sofa
 from fingerController import FingerController
 from fingerController2 import FingerController2
+import numpy as np
 
+# Setup controller to save and export data
+
+class Exporter (Sofa.Core.Controller):
+    def __init__(self, *args, **kwargs):
+        Sofa.Core.Controller.__init__(self, *args, **kwargs)
+        self.step_id = 0
+        
+    def onAnimateEndEvent(self, e):
+        x  = self.getContext().tetras.position.array()
+        x0 = self.getContext().tetras.rest_position.array()
+        u  = x - x0
+        
+        cells = self.getContext().topology.tetrahedra.array()
+        # von_mises = self.getContext().ff.vonMisesPerNode.array()
+        filename = f'step_{self.step_id}.csv'
+        # meshio.write(filename, meshio.Mesh(points=x0, cells={'tetra':cells}, point_data={'u':u, 'von_mises':von_mises}))
+        print(f'Mesh exported at {filename}')
+        self.step_id += 1
+
+# Setup scene
 def createScene(rootNode):
     rootNode.addObject('VisualStyle', displayFlags='showVisual')# showForceFields showBehavior 
     rootNode.addObject('RequiredPlugin',
@@ -11,8 +32,8 @@ def createScene(rootNode):
     rootNode.addObject('FreeMotionAnimationLoop')
     rootNode.addObject('GenericConstraintSolver', tolerance=1e-12, maxIterations=10000)
 
-
     finger = rootNode.addChild('finger')
+    finger.addObject(Exporter(name='exporter'))
     finger.addObject('EulerImplicit', name='odesolver')
     finger.addObject('SparseLDLSolver', name='directSolver')
 
