@@ -1,7 +1,17 @@
 import Sofa
+import Sofa.Gui
+import Sofa.Simulation
 from fingerController import FingerController
 from fingerController2 import FingerController2
 import numpy as np
+import SofaRuntime
+# SofaRuntime.importPlugin("SofaComponentAll")
+
+# to create elements like Node or objects
+import Sofa.Core
+
+# Choose in your script to activate or not the GUI
+USE_GUI = False
 
 # Setup controller to save and export data
 
@@ -14,10 +24,12 @@ class Exporter (Sofa.Core.Controller):
         x  = self.getContext().tetras.position.array()
         x0 = self.getContext().tetras.rest_position.array()
         u  = x - x0
+        print(u)
         
         cells = self.getContext().topology.tetrahedra.array()
         # von_mises = self.getContext().ff.vonMisesPerNode.array()
-        filename = f'step_{self.step_id}.csv'
+        filename = f'../data/step_{self.step_id}.npy'
+        np.save(filename,x)
         # meshio.write(filename, meshio.Mesh(points=x0, cells={'tetra':cells}, point_data={'u':u, 'von_mises':von_mises}))
         print(f'Mesh exported at {filename}')
         self.step_id += 1
@@ -91,3 +103,42 @@ def createScene(rootNode):
     cavity.addObject('BarycentricMapping', name='mapping2', mapForces=False, mapMasses=False)
 
     rootNode.addObject(FingerController2(rootNode))
+
+
+
+def main():
+    # Make sure to load all SOFA libraries and plugins
+    SofaRuntime.importPlugin("SofaBaseMechanics")
+    SofaRuntime.importPlugin('SofaOpenglVisual')
+
+    # Generate the root node
+    root = Sofa.Core.Node("root")
+
+    # Call the above function to create the scene graph
+    createScene(root)
+
+    # Once defined, initialization of the scene graph
+    Sofa.Simulation.init(root)
+
+    if not USE_GUI:
+        for iteration in range(10):
+            Sofa.Simulation.animate(root, root.dt.value)
+            print(iteration)
+
+    else:
+        # Find out the supported GUIs
+        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+        # Launch the GUI (qt or qglviewer)
+        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+        Sofa.Gui.GUIManager.createGUI(root, __file__)
+        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+        # Initialization of the scene will be done here
+        Sofa.Gui.GUIManager.MainLoop(root)
+        Sofa.Gui.GUIManager.closeGUI()
+        print("GUI was closed")
+
+    print("Simulation is done.")
+
+# Function used only if this script is called from a python environment, triggers the main()
+if __name__ == '__main__':
+    main()
