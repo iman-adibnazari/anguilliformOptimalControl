@@ -11,7 +11,8 @@ import SofaRuntime
 import Sofa.Core
 
 # Choose in your script to activate or not the GUI
-USE_GUI = False
+USE_GUI = True
+dt=0.0001
 
 # Setup controller to save and export data
 
@@ -34,8 +35,52 @@ class Exporter (Sofa.Core.Controller):
         print(f'Mesh exported at {filename}')
         self.step_id += 1
 
+# Setup controller to update pressure values
+class PressureController0 (Sofa.Core.Controller):
+    def __init__(self, *args, **kwargs):
+        Sofa.Core.Controller.__init__(self, *args, **kwargs)
+        self.step_id = 0
+        self.node = args[0]
+        self.fingerNode = self.node.getChild('finger')
+        self.pressureConstraint = self.fingerNode.cavity.getObject('SurfacePressureConstraint')
+        self.pressureConstraint.value = [0]
+        
+    def onAnimateBeginEvent(self, e):
+        t=self.step_id*dt # get current time step
+        f0=100 # Hz
+        f1=f0
+        phi0=0
+        p0= 0.01*np.max([np.sin(2*np.pi*f0*t+phi0),0])
+        print("pressure0 = "+ p0.__str__())
+        self.pressureConstraint.value = [p0]
+
+        self.step_id += 1
+
+# Setup controller to update pressure values
+class PressureController1 (Sofa.Core.Controller):
+    def __init__(self, *args, **kwargs):
+        Sofa.Core.Controller.__init__(self, *args, **kwargs)
+        self.step_id = 0
+        self.node = args[0]
+        self.fingerNode = self.node.getChild('finger')
+        self.pressureConstraint = self.fingerNode.cavity2.getObject('SurfacePressureConstraint2')
+        self.pressureConstraint.value = [0]
+
+
+    def onAnimateBeginEvent(self, e):
+        t=self.step_id*dt # get current time step
+        f0=100 # Hz
+        phi0 = np.pi
+        p1= 0.01*np.max([np.sin(2*np.pi*f0*t+phi0),0])
+        print("pressure1 = "+ p1.__str__())
+        self.pressureConstraint.value = [p1]
+
+        self.step_id += 1
+
+
 # Setup scene
 def createScene(rootNode):
+    rootNode.dt=dt
     rootNode.addObject('VisualStyle', displayFlags='showVisual')# showForceFields showBehavior 
     rootNode.addObject('RequiredPlugin',
                     pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver')
@@ -91,7 +136,7 @@ def createScene(rootNode):
                      triangles='@cavityMesh.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
 
-    rootNode.addObject(FingerController(rootNode))
+    rootNode.addObject(PressureController0(rootNode))
 
     # Pneumatic actuation chamber 2
     cavity = finger.addChild('cavity2')
@@ -102,8 +147,7 @@ def createScene(rootNode):
                      triangles='@cavityMesh2.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping2', mapForces=False, mapMasses=False)
 
-    rootNode.addObject(FingerController2(rootNode))
-
+    rootNode.addObject(PressureController1(rootNode))
 
 
 def main():
