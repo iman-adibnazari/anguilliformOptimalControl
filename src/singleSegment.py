@@ -1,12 +1,11 @@
 import Sofa
 import Sofa.Gui
 import Sofa.Simulation
-from fingerController import FingerController
-from fingerController2 import FingerController2
+
 import numpy as np
 import SofaRuntime
-# SofaRuntime.importPlugin("SofaComponentAll")
 
+from pressureConstraintController import PressureConstraintController 
 # to create elements like Node or objects
 import Sofa.Core
 
@@ -35,47 +34,9 @@ class Exporter (Sofa.Core.Controller):
         print(f'Mesh exported at {filename}')
         self.step_id += 1
 
-# Setup controller to update pressure values
-class PressureController0 (Sofa.Core.Controller):
-    def __init__(self, *args, **kwargs):
-        Sofa.Core.Controller.__init__(self, *args, **kwargs)
-        self.step_id = 0
-        self.node = args[0]
-        self.fingerNode = self.node.getChild('finger')
-        self.pressureConstraint = self.fingerNode.cavity.getObject('SurfacePressureConstraint')
-        self.pressureConstraint.value = [0]
-        
-    def onAnimateBeginEvent(self, e):
-        t=self.step_id*dt # get current time step
-        f0=100 # Hz
-        f1=f0
-        phi0=0
-        p0= 0.01*np.max([np.sin(2*np.pi*f0*t+phi0),0])
-        print("pressure0 = "+ p0.__str__())
-        self.pressureConstraint.value = [p0]
-
-        self.step_id += 1
-
-# Setup controller to update pressure values
-class PressureController1 (Sofa.Core.Controller):
-    def __init__(self, *args, **kwargs):
-        Sofa.Core.Controller.__init__(self, *args, **kwargs)
-        self.step_id = 0
-        self.node = args[0]
-        self.fingerNode = self.node.getChild('finger')
-        self.pressureConstraint = self.fingerNode.cavity2.getObject('SurfacePressureConstraint2')
-        self.pressureConstraint.value = [0]
 
 
-    def onAnimateBeginEvent(self, e):
-        t=self.step_id*dt # get current time step
-        f0=100 # Hz
-        phi0 = np.pi
-        p1= 0.01*np.max([np.sin(2*np.pi*f0*t+phi0),0])
-        print("pressure1 = "+ p1.__str__())
-        self.pressureConstraint.value = [p1]
 
-        self.step_id += 1
 
 
 # Setup scene
@@ -89,34 +50,34 @@ def createScene(rootNode):
     rootNode.addObject('FreeMotionAnimationLoop')
     rootNode.addObject('GenericConstraintSolver', tolerance=1e-12, maxIterations=10000)
 
-    finger = rootNode.addChild('finger')
-    finger.addObject(Exporter(name='exporter'))
-    finger.addObject('EulerImplicit', name='odesolver')
-    finger.addObject('SparseLDLSolver', name='directSolver')
+    segment = rootNode.addChild('segment0')
+    segment.addObject(Exporter(name='exporter'))
+    segment.addObject('EulerImplicit', name='odesolver')
+    segment.addObject('SparseLDLSolver', name='directSolver')
 
-    finger.addObject('MeshGmshLoader', name='loader', filename='../meshes/Module_body3.msh')
-    finger.addObject('MeshTopology', src='@loader', name='container')
-    finger.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
-    finger.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
+    segment.addObject('MeshGmshLoader', name='loader', filename='../meshes/Module_body3.msh')
+    segment.addObject('MeshTopology', src='@loader', name='container')
+    segment.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
+    segment.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
-    finger.addObject('UniformMass', totalMass=0.0008)
+    segment.addObject('UniformMass', totalMass=0.0008)
     # Define visual model
-    segmentVisual = finger.addChild("VisualModel")
+    segmentVisual = segment.addChild("VisualModel")
     segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename='../meshes/Module_body_visual.stl')
     segmentVisual.addObject('OglModel', name='visualModel', src='@segmentVisualLoader', color=[0.5,0.5,0.5, .25], updateNormals=False)
     segmentVisual.addObject('BarycentricMapping')
     
     
     # Define stiff layer ROI
-    finger.addObject('BoxROI', name='boxROISubTopo', box=[0, -80, -1, 200, 80, 1], drawBoxes=False, strict=False) # Define box in which the material will be different
+    segment.addObject('BoxROI', name='boxROISubTopo', box=[0, -80, -1, 200, 80, 1], drawBoxes=False, strict=False) # Define box in which the material will be different
     # Set spring-like boundary conditions
-    finger.addObject('BoxROI', name='boxROI', box=[0, -80, -50, 10, 80, 50])
-    finger.addObject('RestShapeSpringsForceField', points='@boxROI.indices', stiffness=1e12, angularStiffness=1e12)
-    finger.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
+    segment.addObject('BoxROI', name='boxROI', box=[0, -80, -50, 10, 80, 50])
+    segment.addObject('RestShapeSpringsForceField', points='@boxROI.indices', stiffness=1e12, angularStiffness=1e12)
+    segment.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
     
     
     # set stiff layer
-    modelSubTopo = finger.addChild('modelSubTopo')
+    modelSubTopo = segment.addChild('modelSubTopo')
     # Set mesh elements of stiff layer
     modelSubTopo.addObject('MeshTopology', position='@loader.position', tetrahedra='@boxROISubTopo.tetrahedraInROI',
                            name='container')
@@ -128,7 +89,7 @@ def createScene(rootNode):
 
 
     # Pneumatic actuation chamber 1
-    cavity = finger.addChild('cavity')
+    cavity = segment.addChild('cavity0')
     cavity.addObject('MeshSTLLoader', name='cavityLoader', filename='../meshes/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
     cavity.addObject('MechanicalObject', name='cavity')
@@ -136,19 +97,35 @@ def createScene(rootNode):
                      triangles='@cavityMesh.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
 
-    rootNode.addObject(PressureController0(rootNode))
+    def policy0(state,time):
+        f0=100 # Hz
+        f1=f0
+        phi0=0
+        p0= 0.01*np.max([np.sin(2*np.pi*f0*time+phi0),0])
+        print("pressure0 = "+ p0.__str__())
+        return p0
+
+    cavity.addObject(PressureConstraintController(dt,policy0,cavity))
 
     # Pneumatic actuation chamber 2
-    cavity = finger.addChild('cavity2')
+    cavity = segment.addChild('cavity1')
     cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename='../meshes/Module_cavity2.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader2', name='cavityMesh2')
-    cavity.addObject('MechanicalObject', name='cavity2')
-    cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint2', template='Vec3', value=1,
+    cavity.addObject('MechanicalObject', name='cavity')
+    cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
                      triangles='@cavityMesh2.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping2', mapForces=False, mapMasses=False)
 
-    rootNode.addObject(PressureController1(rootNode))
 
+    def policy1(state,time):
+        f0=100 # Hz
+        f1=f0
+        phi0=np.pi
+        p0= 0.01*np.max([np.sin(2*np.pi*f0*time+phi0),0])
+        print("pressure0 = "+ p0.__str__())
+        return p0
+
+    cavity.addObject(PressureConstraintController(dt,policy1,cavity))
 
 def main():
     # Make sure to load all SOFA libraries and plugins
