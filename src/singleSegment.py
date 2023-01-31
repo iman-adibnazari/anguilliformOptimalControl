@@ -1,42 +1,22 @@
 import Sofa
 import Sofa.Gui
 import Sofa.Simulation
-
 import numpy as np
 import SofaRuntime
-
+from fullStateRecorder import Exporter
 from pressureConstraintController import PressureConstraintController 
 # to create elements like Node or objects
 import Sofa.Core
+from dotenv import dotenv_values  
+
+# Import policy 
+from randomPolicy import randomPolicy
+
+config = dotenv_values(".env")
 
 # Choose in your script to activate or not the GUI
 USE_GUI = True
 dt=0.0001
-
-# Setup controller to save and export data
-
-class Exporter (Sofa.Core.Controller):
-    def __init__(self, *args, **kwargs):
-        Sofa.Core.Controller.__init__(self, *args, **kwargs)
-        self.step_id = 0
-        
-    def onAnimateEndEvent(self, e):
-        x  = self.getContext().tetras.position.array()
-        x0 = self.getContext().tetras.rest_position.array()
-        u  = x - x0
-        print(u)
-        
-        cells = self.getContext().topology.tetrahedra.array()
-        # von_mises = self.getContext().ff.vonMisesPerNode.array()
-        filename = f'../data/step_{self.step_id}.npy'
-        np.save(filename,x)
-        # meshio.write(filename, meshio.Mesh(points=x0, cells={'tetra':cells}, point_data={'u':u, 'von_mises':von_mises}))
-        print(f'Mesh exported at {filename}')
-        self.step_id += 1
-
-
-
-
 
 
 # Setup scene
@@ -46,16 +26,16 @@ def createScene(rootNode):
     rootNode.addObject('RequiredPlugin',
                     pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver')
 
-    rootNode.findData('gravity').value = [0, 0, 0];
+    rootNode.findData('gravity').value = [0, 0, 0]
     rootNode.addObject('FreeMotionAnimationLoop')
     rootNode.addObject('GenericConstraintSolver', tolerance=1e-12, maxIterations=10000)
 
     segment = rootNode.addChild('segment0')
-    segment.addObject(Exporter(name='exporter'))
+    segment.addObject(Exporter(filetype=0, name='exporter'))
     segment.addObject('EulerImplicit', name='odesolver')
     segment.addObject('SparseLDLSolver', name='directSolver')
 
-    segment.addObject('MeshGmshLoader', name='loader', filename='../meshes/Module_body3.msh')
+    segment.addObject('MeshGmshLoader', name='loader', filename=config["currentDirectory"]+'meshes/Module_body3.msh')
     segment.addObject('MeshTopology', src='@loader', name='container')
     segment.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
     segment.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
@@ -63,7 +43,7 @@ def createScene(rootNode):
     segment.addObject('UniformMass', totalMass=0.0008)
     # Define visual model
     segmentVisual = segment.addChild("VisualModel")
-    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename='../meshes/Module_body_visual.stl')
+    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename=config["currentDirectory"]+'/meshes/Module_body_visual.stl')
     segmentVisual.addObject('OglModel', name='visualModel', src='@segmentVisualLoader', color=[0.5,0.5,0.5, .25], updateNormals=False)
     segmentVisual.addObject('BarycentricMapping')
     
@@ -90,7 +70,7 @@ def createScene(rootNode):
 
     # Pneumatic actuation chamber 1
     cavity = segment.addChild('cavity0')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename='../meshes/Module_cavity1.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename=config["currentDirectory"]+'/meshes/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
     cavity.addObject('MechanicalObject', name='cavity')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
@@ -104,12 +84,13 @@ def createScene(rootNode):
         p0= 0.01*np.max([np.sin(2*np.pi*f0*time+phi0),0])
         print("pressure0 = "+ p0.__str__())
         return p0
+    
 
-    cavity.addObject(PressureConstraintController(dt,policy0,cavity))
+    cavity.addObject(PressureConstraintController(dt,randomPolicy,1,cavity,name="Cavity0Controller"))
 
     # Pneumatic actuation chamber 2
     cavity = segment.addChild('cavity1')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename='../meshes/Module_cavity2.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename=config["currentDirectory"]+'/meshes/Module_cavity2.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader2', name='cavityMesh2')
     cavity.addObject('MechanicalObject', name='cavity')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
@@ -125,7 +106,7 @@ def createScene(rootNode):
         print("pressure0 = "+ p0.__str__())
         return p0
 
-    cavity.addObject(PressureConstraintController(dt,policy1,cavity))
+    cavity.addObject(PressureConstraintController(dt,randomPolicy,1,cavity,name="Cavity1Controller"))
 
 def main():
     # Make sure to load all SOFA libraries and plugins
