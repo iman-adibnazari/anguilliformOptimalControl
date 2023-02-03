@@ -17,17 +17,16 @@ class Exporter (Sofa.Core.Controller):
 
         self.fileType = filetype #0 corresponds to saving everthing as numpy files, 1 corresponds to saving everything as vtks
         
-    def onAnimateEndEvent(self, e):
+    def onAnimateBeginEvent(self, e):
         x  = self.getContext().tetras.position.array()
-        x0 = self.getContext().tetras.rest_position.array()
-        u  = x - x0
-        print(u)
+        # x0 = self.getContext().tetras.rest_position.array()
+        # u  = x - x0
+        # print(u)
         
-        cells = self.getContext().topology.tetrahedra.array()
+        # cells = self.getContext().topology.tetrahedra.array()
         # von_mises = self.getContext().ff.vonMisesPerNode.array()
-        filename = config["currentDirectory"]+f'data/outputData/step_{self.step_id}.'
-        np.save(filename+'npy',x)
-        # meshio.write_points_cells(filename+'vtk', meshio.Mesh(points=x0, cells={'tetra':cells}, point_data={'u':u}))
-        print(f'Mesh exported at {filename}')
+        filename = config["currentDirectory"]+"data/stateData/"+self.name.getValueString().__str__() + "_step_" + self.step_id.__str__() + ".npy"
+        np.save(filename,x)
+        print(f'Centerline exported at {filename}')
         self.step_id += 1
 

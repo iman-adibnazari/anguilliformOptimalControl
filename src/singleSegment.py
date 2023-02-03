@@ -4,7 +4,8 @@ import Sofa.Simulation
 import numpy as np
 import SofaRuntime
 from fullStateRecorder import Exporter
-from pressureConstraintController import PressureConstraintController 
+from pressureConstraintController import PressureConstraintController
+from centerlineStateRecorder import centerlineStateExporter
 # to create elements like Node or objects
 import Sofa.Core
 from dotenv import dotenv_values  
@@ -19,8 +20,10 @@ USE_GUI = True
 dt=0.0001
 
 
-# Setup scene
 def createScene(rootNode):
+    ##################################################
+    # Setup scene                                    #
+    ##################################################
     rootNode.dt=dt
     rootNode.addObject('VisualStyle', displayFlags='showVisual')# showForceFields showBehavior 
     rootNode.addObject('RequiredPlugin',
@@ -35,40 +38,61 @@ def createScene(rootNode):
     segment.addObject('EulerImplicit', name='odesolver')
     segment.addObject('SparseLDLSolver', name='directSolver')
 
+    ##################################################
+    # segment                                        #
+    ##################################################
+
     segment.addObject('MeshGmshLoader', name='loader', filename=config["currentDirectory"]+'meshes/Module_body3.msh')
     segment.addObject('MeshTopology', src='@loader', name='container')
     segment.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
     segment.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
     segment.addObject('UniformMass', totalMass=0.0008)
-    # Define visual model
+
+    ##################################################
+    # segment/visual                                 #
+    ##################################################
+
     segmentVisual = segment.addChild("VisualModel")
     segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename=config["currentDirectory"]+'/meshes/Module_body_visual.stl')
     segmentVisual.addObject('OglModel', name='visualModel', src='@segmentVisualLoader', color=[0.5,0.5,0.5, .25], updateNormals=False)
     segmentVisual.addObject('BarycentricMapping')
     
-    
-    # Define stiff layer ROI
+    ##################################################
+    # segment/stiffLayer                             #
+    ##################################################
     segment.addObject('BoxROI', name='boxROISubTopo', box=[0, -80, -1, 200, 80, 1], drawBoxes=False, strict=False) # Define box in which the material will be different
-    # Set spring-like boundary conditions
     segment.addObject('BoxROI', name='boxROI', box=[0, -80, -50, 10, 80, 50])
-    segment.addObject('RestShapeSpringsForceField', points='@boxROI.indices', stiffness=1e12, angularStiffness=1e12)
+    segment.addObject('RestShapeSpringsForceField', points='@boxROI.indices', stiffness=1e12, angularStiffness=1e12) # spring-like boundary conditions
     segment.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    
-    
     # set stiff layer
     modelSubTopo = segment.addChild('modelSubTopo')
+    
     # Set mesh elements of stiff layer
     modelSubTopo.addObject('MeshTopology', position='@loader.position', tetrahedra='@boxROISubTopo.tetrahedraInROI',
                            name='container')
     # Set material properties of stiff layer
     modelSubTopo.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                            youngModulus=15000)
-    
-    
+    # modelSubTopo.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=True, showObjectScale=1)
 
+    # # Add mechanical object for tracking centerline state 
 
-    # Pneumatic actuation chamber 1
+    ##################################################
+    # segment/centerline                             #
+    ################################################## 
+    centerline = segment.addObject('BoxROI', template="Vec3d", name="centerline_roi", box=[0, -80, -1, 200, 80, 1],drawBoxes=True)
+    segment.addObject(centerlineStateExporter(filetype=0, name='centerlineExporter'))
+
+    # centerlineROI = segment.addChild('centerlineROI')
+    # centerlineROI.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
+    # centerlineROI.addObject('MeshTopology', position='@loader.position', points='@boxROI.indices',
+    #                        name='container')
+    # centerlineROI.addObject(Exporter(filetype=0, name='centerlineExporter'))
+
+    ##################################################
+    # segment/cavity0                                #
+    ##################################################
     cavity = segment.addChild('cavity0')
     cavity.addObject('MeshSTLLoader', name='cavityLoader', filename=config["currentDirectory"]+'/meshes/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
@@ -86,9 +110,12 @@ def createScene(rootNode):
         return p0
     
 
-    cavity.addObject(PressureConstraintController(dt,randomPolicy,1,cavity,name="Cavity0Controller"))
+    cavity.addObject(PressureConstraintController(dt,policy0,1,cavity,name="Cavity0Controller"))
 
-    # Pneumatic actuation chamber 2
+
+    ##################################################
+    # segment/cavity1                                #
+    ##################################################
     cavity = segment.addChild('cavity1')
     cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename=config["currentDirectory"]+'/meshes/Module_cavity2.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader2', name='cavityMesh2')
@@ -96,7 +123,6 @@ def createScene(rootNode):
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
                      triangles='@cavityMesh2.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping2', mapForces=False, mapMasses=False)
-
 
     def policy1(state,time):
         f0=100 # Hz
@@ -106,7 +132,7 @@ def createScene(rootNode):
         print("pressure0 = "+ p0.__str__())
         return p0
 
-    cavity.addObject(PressureConstraintController(dt,randomPolicy,1,cavity,name="Cavity1Controller"))
+    cavity.addObject(PressureConstraintController(dt,policy1,1,cavity,name="Cavity1Controller"))
 
 def main():
     # Make sure to load all SOFA libraries and plugins
@@ -126,7 +152,6 @@ def main():
         for iteration in range(10):
             Sofa.Simulation.animate(root, root.dt.value)
             print(iteration)
-
     else:
         # Find out the supported GUIs
         print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
