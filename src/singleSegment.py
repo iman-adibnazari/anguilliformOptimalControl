@@ -42,7 +42,7 @@ def createScene(rootNode):
     # segment                                        #
     ##################################################
 
-    segment.addObject('MeshGmshLoader', name='loader', filename=config["currentDirectory"]+'meshes/Module_body3.msh')
+    segment.addObject('MeshGmshLoader', name='loader', filename=config["currentDirectory"]+'meshes/singleSegment/Module_body3.msh')
     segment.addObject('MeshTopology', src='@loader', name='container')
     segment.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
     segment.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
@@ -54,7 +54,7 @@ def createScene(rootNode):
     ##################################################
 
     segmentVisual = segment.addChild("VisualModel")
-    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename=config["currentDirectory"]+'/meshes/Module_body_visual.stl')
+    segmentVisual.loader = segmentVisual.addObject('MeshSTLLoader', name='segmentVisualLoader', filename=config["currentDirectory"]+'/meshes/singleSegment/Module_body_visual.stl')
     segmentVisual.addObject('OglModel', name='visualModel', src='@segmentVisualLoader', color=[0.5,0.5,0.5, .25], updateNormals=False)
     segmentVisual.addObject('BarycentricMapping')
     
@@ -94,7 +94,7 @@ def createScene(rootNode):
     # segment/cavity0                                #
     ##################################################
     cavity = segment.addChild('cavity0')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename=config["currentDirectory"]+'/meshes/Module_cavity1.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader', filename=config["currentDirectory"]+'/meshes/singleSegment/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
     cavity.addObject('MechanicalObject', name='cavity')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
@@ -117,7 +117,7 @@ def createScene(rootNode):
     # segment/cavity1                                #
     ##################################################
     cavity = segment.addChild('cavity1')
-    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename=config["currentDirectory"]+'/meshes/Module_cavity2.stl')
+    cavity.addObject('MeshSTLLoader', name='cavityLoader2', filename=config["currentDirectory"]+'/meshes/singleSegment/Module_cavity2.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader2', name='cavityMesh2')
     cavity.addObject('MechanicalObject', name='cavity')
     cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
