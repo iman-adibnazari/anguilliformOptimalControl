@@ -10,21 +10,30 @@ config = dotenv_values(".env")
 
 # Setup controller to save and export data
 
-class centerlineStateExporter (Sofa.Core.Controller):
+class centerlineStateExporterMulti (Sofa.Core.Controller):
     def __init__(self, filetype,*args, **kwargs):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
+        self.segments = kwargs.get("segments")
         self.step_id = 0
 
         self.fileType = filetype #0 corresponds to saving everthing as numpy files, 1 corresponds to saving everything as vtks
         
 
+    # TODO: Context-tetras doesnt exist in the segments now needs to be changed to automatically get name of state
     def onAnimateBeginEvent(self, e):
-        a= self.getContext().centerline_roi
+        a= self.getContext()
         b= self.getContext()
-        with self.getContext().centerline_roi.indices.writeableArray() as indices:
+        x = np.empty((1,3))
+        for ind,segment in enumerate(self.segments): 
 
-            with self.getContext().tetras.position.writeableArray() as wa:
-                x = wa[indices,:]
+            with segment.centerline_roi.indices.writeableArray() as indices:
+
+                with segment.state.position.writeableArray() as wa:
+                    temp = wa[indices,:]
+                    if ind ==0:
+                        x = temp 
+                    else: 
+                        x = np.concatenate((x,temp))
         # x  = self.getContext().centerline_roi.pointsInROI.value
         # print("indices are: "+ x.__str__())
 

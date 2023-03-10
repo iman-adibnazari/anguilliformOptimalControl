@@ -25,8 +25,11 @@ class PressureConstraintController(Sofa.Core.Controller):
 
     def onAnimateBeginEvent(self, e):
         t=self.step_id*self.deltaT # get current time step
-        
-        self.pressureConstraint.value = [self.policy(0,t)]
+    
+        if callable(self.policy): # check if the given policy is a true function and call the function
+            self.pressureConstraint.value = [self.policy(0,t)]
+        else:   # if the policy is a policy object then call its getAction() method
+            self.pressureConstraint.value = [self.policy.getAction(0,t)]
         if self.saveOutput==1: 
             dataArray = np.array([t,self.pressureConstraint.value[0]]) 
             filename = config["currentDirectory"]+"data/inputData/"+self.name.getValueString().__str__() + "_step_" + self.step_id.__str__() + ".npy"
