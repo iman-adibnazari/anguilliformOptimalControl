@@ -30,7 +30,7 @@ filenameSuffix_centerlines = ".npy"
 
 # configure video to be saved
 savePath = config["currentDirectory"] +"data/visualizations/" 
-numFiles = 1000#np.size(files) 
+numFiles = 3000#np.size(files) 
 print(numFiles)  
 
 
@@ -41,18 +41,23 @@ print(numFiles)
 filename = filepath + filenamePrefix + "0" + filenameSuffix
 # Read in data from file  
 data = np.array([np.array(np.load(filename)).flatten()])
-
+dataFull = np.zeros((numFiles,data.size))
+dataFull[0,:] = data
 # Initialize array for holding input data
 filename_inputs = filepath_inputs + filenamePrefix_inputs + "0" + filenameSuffix_inputs
 inputData = np.array([np.array(np.load(filename_inputs)).flatten()])
+inputDataFull = np.zeros((numFiles,inputData.size))
+inputDataFull[0,:] = inputData
 
 # Initialize array for holding centerline data 
 filename_centerlines = filepath_centerlines + filenamePrefix_centerlines+"0" + filenameSuffix_centerlines 
 centerlineData = np.array([np.array(np.load(filename_centerlines)).flatten()])
+centerlineDataFull = np.zeros((numFiles,centerlineData.size))
+centerlineDataFull[0,:] = centerlineData
 
 
 # form matrices of data
-for i in range(numFiles):
+for i in range(1,numFiles):
     print(i)
     filename = filepath + filenamePrefix + int(round(i)).__str__() + filenameSuffix
     filename_inputs = filepath_inputs + filenamePrefix_inputs + int(round(i)).__str__() + filenameSuffix_inputs
@@ -64,17 +69,23 @@ for i in range(numFiles):
     zs = data[:,2]
  
     newStateData = np.array([np.array(np.load(filename)).flatten()]) 
-    data = np.append(data,newStateData,axis=0)
+    # data = np.append(data,newStateData,axis=0)
 
     newInputData = np.array([np.array(np.load(filename_inputs)).flatten()]) 
-    inputData = np.append(inputData,newInputData,axis=0)
+    # inputData = np.append(inputData,newInputData,axis=0)
 
     newCenterlineData = np.array([np.array(np.load(filename_centerlines)).flatten()]) 
-    centerlineData = np.append(centerlineData,newCenterlineData,axis=0)
+    # centerlineData = np.append(centerlineData,newCenterlineData,axis=0)
+
+
+    dataFull[i,:] = newStateData
+    inputDataFull[i,:] = newInputData
+    centerlineDataFull[i,:] = newCenterlineData
+
 print("done")
 
-outfileName = config["currentDirectory"] +"data/processedData/"+"cleanedArrays.npz"
+outfileName = config["currentDirectory"] +"data/processedData/"+"testSet.npz"
 
-np.savez(outfileName, stateData = data, inputData = inputData,centerlineData=centerlineData)
+np.savez(outfileName, stateData = dataFull, inputData = inputDataFull,centerlineData=centerlineDataFull)
 
 
