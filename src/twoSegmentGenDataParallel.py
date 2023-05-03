@@ -43,23 +43,16 @@ recordCenterline = True
 recordInputs = True     
 savePressureInputs = 0
 
-##################################################
-# Initialize control policies for each chamber   #
-##################################################
-
-policy_c00 = brownianPolicy(dt=dt, seed = 2)
-policy_c01 = brownianPolicy(dt=dt, seed = 3)
-policy_c10 = brownianPolicy(dt=dt, seed = 4)
-policy_c11 = brownianPolicy(dt=dt, seed = 5)
 
 
 
-def createScene(rootNode):
+
+def createScene(rootNode, policySeed = 0):
     ##################################################
     # Setup scene                                    #
     ##################################################
     rootNode.dt=dt
-    rootNode.addObject('VisualStyle', displayFlags='showVisual')# showForceFields showBehavior 
+    rootNode.addObject('VisualStyle', displayFlags='showVisual') # showForceFields showBehavior 
     rootNode.addObject('RequiredPlugin',
                     pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver')
 
@@ -68,6 +61,14 @@ def createScene(rootNode):
     rootNode.addObject('GenericConstraintSolver', tolerance=1e-12, maxIterations=10000)
 
 
+    ##################################################
+    # Initialize control policies for each chamber   #
+    ##################################################
+
+    policy_c00 = brownianPolicy(dt=dt, seed = policySeed)
+    policy_c01 = brownianPolicy(dt=dt, seed = policySeed+5)
+    policy_c10 = brownianPolicy(dt=dt, seed = policySeed+6)
+    policy_c11 = brownianPolicy(dt=dt, seed = policySeed+7)
 
     ##################################################
     # Load in meshes                                 #
@@ -290,14 +291,12 @@ def createScene(rootNode):
     rootNode.addObject('BilateralInteractionConstraint', template='Vec3d', object1='@segment1', object2='@couple0', first_point='529', second_point='21')    
     rootNode.addObject('BilateralInteractionConstraint', template='Vec3d', object1='@segment1', object2='@couple0', first_point='527', second_point='20')    
 
-
     if recordCenterline: 
-        rootNode.addObject(centerlineStateExporterMulti(filetype=0, name='centerlineExporter', segments = [segment0, segment1]))
+        rootNode.addObject(centerlineStateExporterMulti(filetype=0, name='centerlineExporter', segments = [segment0, segment1],policySeed =policySeed))
     if recordFullState: 
-        rootNode.addObject(fullStateExporterMulti(filetype=0, name='stateExporter', segments = [segment0, segment1]))
+        rootNode.addObject(fullStateExporterMulti(filetype=0, name='stateExporter', segments = [segment0, segment1],policySeed =policySeed))
     if recordPressureInputs: 
-        rootNode.addObject(pressureInputRecorder(name='inputExporter', segments = [segment0, segment1]))
-
+        rootNode.addObject(pressureInputRecorder(name='inputExporter', segments = [segment0, segment1],policySeed =policySeed))
 
 
     if attachPumps: 
@@ -366,36 +365,38 @@ def createScene(rootNode):
 
 
 def main():
+    numEpisodes = 50
     # Make sure to load all SOFA libraries and plugins
     SofaRuntime.importPlugin("SofaBaseMechanics")
     SofaRuntime.importPlugin('SofaOpenglVisual')
+    for i in range(0,numEpisodes):
 
-    # Generate the root node
-    root = Sofa.Core.Node("root")
+        # Generate the root node
+        root = Sofa.Core.Node("root")
 
-    # Call the above function to create the scene graph
-    createScene(root)
+        # Call the above function to create the scene graph
+        createScene(root,policySeed=i)
 
-    # Once defined, initialization of the scene graph
-    Sofa.Simulation.init(root)
+        # Once defined, initialization of the scene graph
+        Sofa.Simulation.init(root)
 
-    if not USE_GUI:
-        for iteration in range(numSteps):
-            Sofa.Simulation.animate(root, root.dt.value)
-            print(iteration)
-    else:
-        # Find out the supported GUIs
-        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-        # Launch the GUI (qt or qglviewer)
-        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-        Sofa.Gui.GUIManager.createGUI(root, __file__)
-        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-        # Initialization of the scene will be done here
-        Sofa.Gui.GUIManager.MainLoop(root)
-        Sofa.Gui.GUIManager.closeGUI()
-        print("GUI was closed")
+        if not USE_GUI:
+            for iteration in range(numSteps):
+                Sofa.Simulation.animate(root, root.dt.value)
+                print("Episode " + i.__str__() + " timeStep: " + iteration.__str__())
+        else:
+            # Find out the supported GUIs
+            print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+            # Launch the GUI (qt or qglviewer)
+            Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+            Sofa.Gui.GUIManager.createGUI(root, __file__)
+            Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+            # Initialization of the scene will be done here
+            Sofa.Gui.GUIManager.MainLoop(root)
+            Sofa.Gui.GUIManager.closeGUI()
+            print("GUI was closed")
 
-    print("Simulation is done.")
+        print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':

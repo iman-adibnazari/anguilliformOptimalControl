@@ -15,6 +15,10 @@ class pressureInputRecorder(Sofa.Core.Controller):
     def __init__(self, *args, **kwargs):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
         self.step_id = 0 
+        if "policySeed" in kwargs:
+            self.policySeed = kwargs.get("policySeed")
+        else:
+            self.policySeed = 0
         self.segments = kwargs.get("segments")
 
     def onAnimateEndEvent(self, e):
@@ -33,7 +37,7 @@ class pressureInputRecorder(Sofa.Core.Controller):
 
 
 
-        filename = config["currentDirectory"]+"data/inputData/"+self.name.getValueString().__str__() + "_step_" + self.step_id.__str__() + ".npy"
+        filename = config["currentDirectory"]+"data/inputData/"+self.name.getValueString().__str__()+"_policySeed_"+ self.policySeed.__str__() + "_step_" + self.step_id.__str__() + ".npy"
         np.save(filename,x)
 
         self.step_id += 1   
