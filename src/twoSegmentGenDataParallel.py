@@ -27,11 +27,11 @@ config = dotenv_values(".env")
 # Simulation Parameters                          #
 ##################################################
 USE_GUI = False
-numSteps = 1000
-dt=0.0005
+numSteps = 200
+dt=0.001
 attachPumps = False
-segmentMass = 1 #kg
-coupleMass = 0.1
+segmentMass = 2 #kg
+coupleMass = 0.5 #kg
 
 
 ##################################################
@@ -365,7 +365,7 @@ def createScene(rootNode, policySeed = 0):
 
 
 def main():
-    numEpisodes = 50
+    numEpisodes = 100
     # Make sure to load all SOFA libraries and plugins
     SofaRuntime.importPlugin("SofaBaseMechanics")
     SofaRuntime.importPlugin('SofaOpenglVisual')

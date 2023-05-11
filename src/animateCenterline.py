@@ -15,19 +15,19 @@ from moviepy.video.io.bindings import mplfig_to_npimage
 config = dotenv_values(".env")
 # Filepaths for centerline data
 filepath = config["currentDirectory"] +"data/centerlineData/" 
-filenamePrefix = "centerlineExporter_step_" 
+filenamePrefix = "centerlineExporter_policySeed_1_step_" 
 filenameSuffix = ".npy"
 
 # Filepaths for input data
 filepath_inputs = config["currentDirectory"] +"data/inputData/" 
-filenamePrefix_inputs = "inputExporter_step_" 
+filenamePrefix_inputs = "inputExporter_policySeed_1_step_" 
 filenameSuffix_inputs = ".npy"
 
 
 # configure video to be saved
 savePath = config["currentDirectory"] +"data/visualizations/" 
 # files = dir_list = os.listdir(filepath)
-numFiles = 1000#np.size(files) 
+numFiles = 200#np.size(files) 
 print(numFiles)  
 # Setup figure for plotting data
 fig = plt.figure()
@@ -133,5 +133,5 @@ def animate(t):
 
 # Save video
 animation = VideoClip(animate, duration = duration)
-animation.write_gif(savePath + "test.gif",fps=fps)
+animation.write_gif(savePath + "test3.gif",fps=fps)
 
