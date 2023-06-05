@@ -108,4 +108,5 @@ def cleanDataMultiEpisodes(numEpisodes = 1):
 
 
 if __name__ == '__main__':
-    cleanDataMultiEpisodes(numEpisodes=50)
+    # cleanDataMultiEpisodes(numEpisodes=50)
+    cleanData(numTimeSteps=500, outFilename='processedData_anoushsSillySinWav4.npz')

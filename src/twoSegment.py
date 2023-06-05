@@ -16,6 +16,7 @@ from dotenv import dotenv_values
 # Import policy 
 from randomPolicy import randomPolicy
 from brownianPolicy import brownianPolicy
+from sinusoidalPolicy import sinusoidalPolicy
 
 
 
@@ -27,7 +28,7 @@ config = dotenv_values(".env")
 # Simulation Parameters                          #
 ##################################################
 USE_GUI = False
-numSteps = 1000
+numSteps = 500
 dt=0.0005
 attachPumps = False
 segmentMass = 1 #kg
@@ -51,6 +52,11 @@ policy_c00 = brownianPolicy(dt=dt, seed = 2)
 policy_c01 = brownianPolicy(dt=dt, seed = 3)
 policy_c10 = brownianPolicy(dt=dt, seed = 4)
 policy_c11 = brownianPolicy(dt=dt, seed = 5)
+
+sinusoidalPolicy_c00 = sinusoidalPolicy(dt=dt, phase = 180, amplitude = 0.025, frequency = 8) 
+sinusoidalPolicy_c01 = sinusoidalPolicy(dt=dt, phase = 0, amplitude = 0.025, frequency = 8)
+sinusoidalPolicy_c10 = sinusoidalPolicy(dt=dt, phase = 0, amplitude = 0.025, frequency = 8)
+sinusoidalPolicy_c11 = sinusoidalPolicy(dt=dt, phase = 180, amplitude = 0.025, frequency = 8)
 
 
 
@@ -100,8 +106,6 @@ def createScene(rootNode):
     segment0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
     segment0.addObject('UniformMass', totalMass=segmentMass)
-
-
     
     ##################################################
     # segment0/visual                                #
@@ -142,7 +146,7 @@ def createScene(rootNode):
         return p0
     
 
-    chamber0_0.addObject(PressureConstraintController(dt,policy_c00,savePressureInputs,chamber0_0,name="chamber0_0Controller"))
+    chamber0_0.addObject(PressureConstraintController(dt,sinusoidalPolicy_c00,savePressureInputs,chamber0_0,name="chamber0_0Controller"))
 
     ##################################################
     # segment0/chamber1                            #
@@ -163,7 +167,7 @@ def createScene(rootNode):
         return p0
     
 
-    chamber0_1.addObject(PressureConstraintController(dt,policy_c01,savePressureInputs,chamber0_1,name="chamber0_1Controller"))
+    chamber0_1.addObject(PressureConstraintController(dt,sinusoidalPolicy_c01,savePressureInputs,chamber0_1,name="chamber0_1Controller"))
 
     ##################################################
     # segment0/centerlineROI                         #
@@ -221,7 +225,7 @@ def createScene(rootNode):
         print("pressure0 = "+ p0.__str__())
         return p0
 
-    chamber0_1.addObject(PressureConstraintController(dt,policy_c10,savePressureInputs,chamber1_0,name="chamber1_0Controller"))
+    chamber0_1.addObject(PressureConstraintController(dt,sinusoidalPolicy_c10,savePressureInputs,chamber1_0,name="chamber1_0Controller"))
 
     ##################################################
     # segment1/chamber1                            #
@@ -242,7 +246,7 @@ def createScene(rootNode):
         return p0
     
 
-    chamber0_0.addObject(PressureConstraintController(dt,policy_c11,savePressureInputs,chamber1_1,name="chamber1_1Controller"))
+    chamber0_0.addObject(PressureConstraintController(dt,sinusoidalPolicy_c11,savePressureInputs,chamber1_1,name="chamber1_1Controller"))
     
     ##################################################
     # segment1/centerlineROI                         #
@@ -270,7 +274,7 @@ def createScene(rootNode):
     ##################################################
     couple0Visual = couple0.addChild("VisualModel")
 
-    couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.7,0.7,1, 0.1], updateNormals=False)
+    couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.7,0.7,1, 0.5], updateNormals=False)
     couple0Visual.addObject('BarycentricMapping')
 
 
@@ -319,7 +323,7 @@ def createScene(rootNode):
         # pump0/visual                                   #
         ##################################################
         pump0Visual = pump0.addChild("VisualModel")
-        pump0Visual.addObject('OglModel', name='visualModel', src='@../../pump0Loader', color=[0.7,1,0.7, 0.8], updateNormals=False)
+        pump0Visual.addObject('OglModel', name='visualModel', src='@../../pump0Loader', color=[0.7,1,0.7, 0.5], updateNormals=False)
         pump0Visual.addObject('BarycentricMapping')
         ##################################################
         # pump1                                          #
@@ -338,7 +342,7 @@ def createScene(rootNode):
         # pump1/visual                                   #
         ##################################################
         pump1Visual = pump1.addChild("VisualModel")
-        pump1Visual.addObject('OglModel', name='visualModel', src='@../../pump1Loader', color=[0.7,1,0.7, 0.8], updateNormals=False)
+        pump1Visual.addObject('OglModel', name='visualModel', src='@../../pump1Loader', color=[0.7,1,0.7, 0.5], updateNormals=False)
         pump1Visual.addObject('BarycentricMapping')
 
 
