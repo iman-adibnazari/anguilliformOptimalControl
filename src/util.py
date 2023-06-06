@@ -105,7 +105,60 @@ def cleanDataMultiEpisodes(numEpisodes = 1):
                   numTimeSteps = numTimeSteps,
                   outFilename = outFilename)
         
+def reduceCenterline(n, points, N_local = 20):
+    '''
+    reduces the number of points in the centerline data to n discretized points
+        Parameters:
+            n: number of discretized points to reduce to
+            points: centerline data
+            N_local: number of points to average over closest to the discretized points
+    
+        Returns:
+            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane
+    '''
+    # initialize reducedPoints array
+    reducedPoints = np.zeros((n,2))
+    # get number of points in original centerline data
+    numPoints = points.shape[0]
+    # get limits of x coordinates
+    xMin = np.min(points[:,0])
+    xMax = np.max(points[:,0])
+    # get distance between reduced points
+    dx = (xMax-xMin)/(n-1)
+    # average z value of points within each x coordinate range
+    for i in range(n):
+        x = xMin + i*dx
+        # get indices of N_local points closest to discretized point
+        indices = np.argsort(np.abs(points[:,0]-x))[:N_local]
+        # indices = np.where(np.logical_and(points[:,0] >= x-dx/2.0, points[:,0] < x+dx/2.0))
+        # get average z value of points within x coordinate range
+        z = np.mean(points[indices,2])
+        # set reduced point
+        reducedPoints[i,:] = np.array([x,z])
+    return reducedPoints
 
+
+def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20):
+    '''
+    reduces the number of points in the centerline data to n discretized points to form full reduced output matrix for the episode
+        Parameters:
+            n: number of discretized points to reduce to
+            centerlineData: centerline data. Rows correspond to timesteps and columns correspond to state data rows
+            N_local: number of points to average over closest to the discretized points
+    
+        Returns:
+            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane. Rows correspond to state data rows and columns correspond to timesteps
+    '''
+    # initialize reducedPoints array
+    numTimeSteps = centerlineData.shape[0]
+    reducedPoints = np.zeros((2*n,numTimeSteps))
+    # Iterate over timesteps and reduce centerline data
+    for i in range(numTimeSteps):
+        points = centerlineData[i,:].reshape((-1,3))
+        reducedPoints[:,i] = reduceCenterline(n, points, N_local).flatten()
+
+
+    return reducedPoints
 
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
