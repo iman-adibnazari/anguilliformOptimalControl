@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import os
+import glob
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
@@ -9,14 +10,147 @@ from dotenv import dotenv_values
 # importing movie py libraries
 from moviepy.editor import VideoClip
 from moviepy.video.io.bindings import mplfig_to_npimage
+from scipy.io import savemat
+
 
 config = dotenv_values(".env")
+def reduceCenterline(n, points, N_local = 20, 
+                     permuteCenterlineReduction = False, # If true, that means centerline should be discretized along the z axis instead of the x axis as usual
+):
+    '''
+    reduces the number of points in the centerline data to n discretized points
+        Parameters:
+            n: number of discretized points to reduce to
+            points: centerline data
+            N_local: number of points to average over closest to the discretized points
+    
+        Returns:
+            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane
+    '''
+    # initialize reducedPoints array
+    reducedPoints = np.zeros((n,2))
+    # get number of points in original centerline data
+    numPoints = points.shape[0]
+    if permuteCenterlineReduction:
+        # swap x and z coordinates
+        points = points[:,[2,1,0]]
+    # get limits of x coordinates
+    xMin = np.min(points[:,0])
+    xMax = np.max(points[:,0])
+    # get distance between reduced points
+    dx = (xMax-xMin)/(n-1)
+    # average z value of points within each x coordinate range
+    for i in range(n):
+        x = xMin + i*dx
+        # get indices of N_local points closest to discretized point
+        indices = np.argsort(np.abs(points[:,0]-x))[:N_local]
+        # indices = np.where(np.logical_and(points[:,0] >= x-dx/2.0, points[:,0] < x+dx/2.0))
+        # get average z value of points within x coordinate range
+        z = np.mean(points[indices,2])
+        # set reduced point
+        reducedPoints[i,:] = np.array([x,z])
+
+    if permuteCenterlineReduction:
+        # swap x and z coordinates back
+        reducedPoints = reducedPoints[:,[1,0]]
+    return reducedPoints
+
+
+def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20,
+                                permuteCenterlineReduction = False, # If true, that means centerline should be discretized along the z axis instead of the x axis as usual
+                                ):
+    '''
+    reduces the number of points in the centerline data to n discretized points to form full reduced output matrix for the episode
+        Parameters:
+            n: number of discretized points to reduce to
+            centerlineData: centerline data. Rows correspond to timesteps and columns correspond to centerline states 
+            N_local: number of points to average over closest to the discretized points
+    
+        Returns:
+            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane. Rows correspond to state data rows and columns correspond to timesteps
+    '''
+    # Parameters for reduced centerline
+    n_redCenterline = n # number of discretized points in reduced centerline
+    n_redLocal = N_local # number of points to average over closest to the discretized points
+    discretizeAlongZ = permuteCenterlineReduction # discretize along z axis or x axis
+    points = centerlineData # centerline data
+
+
+    #### Form selection matrix for centerline reduction ####
+    # Grab points for first timestep and reshape
+    centerline_t = np.reshape(points[0,:],(-1,3))
+    # If discretizing along z axis, swap x and z coordinates
+    if discretizeAlongZ:
+        centerline_t = np.flip(centerline_t,1)
+
+    # Find bounds for centerline data
+    xmin = np.min(centerline_t[:,0])
+    xmax = np.max(centerline_t[:,0])
+    # compute average z value of centerline
+    zavg = -240#np.mean(centerline_t[:,2])
+    # find distance between discretization points
+    dx = (xmax-xmin)/(n_redCenterline-1)
+    # initialize averaging matrix mapping from full centerline to reduced centerline
+    avgMatrix = np.zeros((n_redCenterline,centerline_t.shape[0]))
+    # loop over discretized points to find closest points in full centerline
+    for i in range(n_redCenterline):
+        # find n_redLocal closest points in full centerline closest to the discretized point in the x direction and the average z value
+        idx = np.argsort(np.abs(centerline_t[:,0]-xmin-i*dx)+2*np.abs(centerline_t[:,2]-zavg))[0:n_redLocal]
+        # idx = np.argsort(np.abs(centerline_t[:,0]-(xmin+i*dx)))[:n_redLocal]
+
+        # populate averaging matrix
+        avgMatrix[i,idx] = 1/n_redLocal
+
+    #### Compute reduced centerline ####
+    # form snapshot matrix of x coordinates of reduced centerline
+    xMat = np.zeros((centerline_t.shape[0],points.shape[0]))
+    for i in range(points.shape[0]):
+        centerline_t = np.reshape(points[i,:],(-1,3))
+        if discretizeAlongZ:
+            centerline_t = np.flip(centerline_t,1)
+        xMat[:,i] = centerline_t[:,0]
+    # form snapshot matrix of z coordinates of full centerline
+    zMat = np.zeros((centerline_t.shape[0],points.shape[0]))
+    for i in range(points.shape[0]):
+        centerline_t = np.reshape(points[i,:],(-1,3))
+        if discretizeAlongZ:
+            centerline_t = np.flip(centerline_t,1)
+        zMat[:,i] = centerline_t[:,2]
+
+
+    # compute reduced centerline coordinates
+    xRed = np.matmul(avgMatrix,xMat)
+    zRed = np.matmul(avgMatrix,zMat)
+
+    # form reduced centerline matrix for output
+    reducedPoints = np.zeros((points.shape[0],2*n_redCenterline))
+    for i in range(points.shape[0]):
+        # form matrix that iterates between x and z coordinates
+        redCenterline_t = np.concatenate((xRed[:,i].reshape(-1,1),zRed[:,i].reshape(-1,1)),axis=1)
+        # if discretizing along z axis, swap x and z coordinates
+        if discretizeAlongZ:
+            redCenterline_t = np.flip(redCenterline_t,1)
+        # populate reduced centerline matrix
+        reducedPoints[i,:] = redCenterline_t.flatten()
+
+    return reducedPoints
+
+
 
 def cleanData(stateDataFilePathPrefix = "stateExporter_policySeed_0_step_", 
               inputDataFilePathPrefix = "inputExporter_policySeed_0_step_",
               centerlineDataFilePathPrefix = "centerlineExporter_policySeed_0_step_",
               numTimeSteps = 1000, # number of timesteps in each episode
-              outFilename = "processedData_policySeed_0.npz"):
+              outFilename = "processedData_policySeed_0.npz",
+              permuteCenterlineReduction = False, # If true, that means centerline should be discretized along the z axis instead of the x axis as usual
+              n_redCenterline = 20, # number of discretized points in reduced centerline
+              n_redLocal = 3, # number of points to average over closest to the discretized points
+              ):
+    
+    # Parameters for reduced centerline
+    # n_redCenterline = 30 # number of discretized points in reduced centerline
+    # n_redLocal = 20 # number of points to average over closest to the discretized points
+
 
 
     # Filepaths for centerline data
@@ -60,7 +194,11 @@ def cleanData(stateDataFilePathPrefix = "stateExporter_policySeed_0_step_",
     centerlineDataFull = np.zeros((numFiles,centerlineData.size))
     centerlineDataFull[0,:] = centerlineData
 
+    # # Initialize array for holding reduced centerline data
+    # reducedCenterlineDataFull = np.zeros((numFiles,2*n_redCenterline))
+    # reducedCenterlineDataFull[0,:] = reduceCenterline(n_redCenterline, centerlineData.reshape((-1,3)), n_redLocal).flatten()
 
+        
     # form matrices of data
     for i in range(1,numFiles):
         filename = filepath + filenamePrefix + int(round(i)).__str__() + filenameSuffix
@@ -81,85 +219,79 @@ def cleanData(stateDataFilePathPrefix = "stateExporter_policySeed_0_step_",
         newCenterlineData = np.array([np.array(np.load(filename_centerlines)).flatten()]) 
         # centerlineData = np.append(centerlineData,newCenterlineData,axis=0)
 
-
         dataFull[i,:] = newStateData
         inputDataFull[i,:] = newInputData
         centerlineDataFull[i,:] = newCenterlineData
+    # generate reduced centerline data
+    reducedCenterlineDataFull = reduceCenterlineFullEpisode(n_redCenterline, centerlineDataFull, n_redLocal, permuteCenterlineReduction = permuteCenterlineReduction)
+
 
     print("done")
 
     outfileName = config["currentDirectory"] +"data/processedData/"+outFilename
 
-    np.savez(outfileName, stateData = dataFull, inputData = inputDataFull,centerlineData=centerlineDataFull)
+    np.savez(outfileName, stateData = dataFull, inputData = inputDataFull,centerlineData=centerlineDataFull,reducedCenterlineData = reducedCenterlineDataFull)
 
-def cleanDataMultiEpisodes(numEpisodes = 1):
+def cleanDataMultiEpisodes(numEpisodes = 1,numTimeSteps = 200,permuteCenterlineReduction = False):
     for i_episode in range(numEpisodes):
         stateDataFilePathPrefix = f"stateExporter_policySeed_{i_episode}_step_" 
         inputDataFilePathPrefix = f"inputExporter_policySeed_{i_episode.__str__()}_step_"
         centerlineDataFilePathPrefix = f"centerlineExporter_policySeed_{i_episode.__str__()}_step_"
-        numTimeSteps = 1000 # number of timesteps in each episode
         outFilename = f"processedData_policySeed_{i_episode}.npz"
         cleanData(stateDataFilePathPrefix = stateDataFilePathPrefix,
                   inputDataFilePathPrefix = inputDataFilePathPrefix,
                   centerlineDataFilePathPrefix = centerlineDataFilePathPrefix,
                   numTimeSteps = numTimeSteps,
-                  outFilename = outFilename)
+                  outFilename = outFilename,
+                  permuteCenterlineReduction=permuteCenterlineReduction)
+
+
+def processedNpzToMatlab():
+    filepath = config["currentDirectory"] + "data/processedData/processedData_policySeed_0.npz"
+
+    npzFiles = glob.glob(config["currentDirectory"] + "data/processedData/"+"*.npz")
+
+    for f in npzFiles:
+        fm = os.path.splitext(f)[0]+'.mat'
+        d = np.load(f)
+        savemat(fm, d)
+        print('generated ', fm, 'from', f)
+
+def generateDataSetFromProcessedNPZs(saveMatlab = False):
+    npzFiles = glob.glob(config["currentDirectory"] + "data/processedData/"+"*.npz")
+    numFiles = len(npzFiles)
+    # Read in first file to get size of data
+    d = np.load(npzFiles[0])
+    stateData = d['stateData'].transpose()
+    inputData = d['inputData'].transpose()
+    centerlineData = d['centerlineData'].transpose()
+    reducedCenterlineData = d['reducedCenterlineData'].transpose()
+    numTimeSteps = stateData.shape[1]
+    numStates = stateData.shape[0]
+    numInputs = inputData.shape[0]
+    dimCenterline = centerlineData.shape[0]
+    dimReducedCenterline = reducedCenterlineData.shape[0]
+    # Initialize arrays for holding data
+    stateDataFull = np.zeros((numStates,numTimeSteps,numFiles))
+    inputDataFull = np.zeros((numInputs,numTimeSteps,numFiles))
+    centerlineDataFull = np.zeros((dimCenterline,numTimeSteps,numFiles))
+    reducedCenterlineDataFull = np.zeros((dimReducedCenterline,numTimeSteps,numFiles))
+    # Read in data from files
+    for i in range(numFiles):
+        d = np.load(npzFiles[i])
+        stateDataFull[:,:,i] = d['stateData'].transpose()
+        inputDataFull[:,:,i] = d['inputData'].transpose()
+        centerlineDataFull[:,:,i] = d['centerlineData'].transpose()
+        reducedCenterlineDataFull[:,:,i] = d['reducedCenterlineData'].transpose()
+    # Save data to npz file
+    outfileName = config["currentDirectory"] +"data/processedData/processedDataSet.npz"
+    np.savez(outfileName, stateData = stateDataFull, inputData = inputDataFull,centerlineData=centerlineDataFull,reducedCenterlineData = reducedCenterlineDataFull)
+    if saveMatlab:
+        outfileNameMat = config["currentDirectory"] +"data/processedData/processedDataSet.mat"
+        savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull})
         
-def reduceCenterline(n, points, N_local = 20):
-    '''
-    reduces the number of points in the centerline data to n discretized points
-        Parameters:
-            n: number of discretized points to reduce to
-            points: centerline data
-            N_local: number of points to average over closest to the discretized points
-    
-        Returns:
-            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane
-    '''
-    # initialize reducedPoints array
-    reducedPoints = np.zeros((n,2))
-    # get number of points in original centerline data
-    numPoints = points.shape[0]
-    # get limits of x coordinates
-    xMin = np.min(points[:,0])
-    xMax = np.max(points[:,0])
-    # get distance between reduced points
-    dx = (xMax-xMin)/(n-1)
-    # average z value of points within each x coordinate range
-    for i in range(n):
-        x = xMin + i*dx
-        # get indices of N_local points closest to discretized point
-        indices = np.argsort(np.abs(points[:,0]-x))[:N_local]
-        # indices = np.where(np.logical_and(points[:,0] >= x-dx/2.0, points[:,0] < x+dx/2.0))
-        # get average z value of points within x coordinate range
-        z = np.mean(points[indices,2])
-        # set reduced point
-        reducedPoints[i,:] = np.array([x,z])
-    return reducedPoints
-
-
-def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20):
-    '''
-    reduces the number of points in the centerline data to n discretized points to form full reduced output matrix for the episode
-        Parameters:
-            n: number of discretized points to reduce to
-            centerlineData: centerline data. Rows correspond to timesteps and columns correspond to state data rows
-            N_local: number of points to average over closest to the discretized points
-    
-        Returns:
-            reducedPoints: reduced centerline data with n discretized points projected into the x-z plane. Rows correspond to state data rows and columns correspond to timesteps
-    '''
-    # initialize reducedPoints array
-    numTimeSteps = centerlineData.shape[0]
-    reducedPoints = np.zeros((2*n,numTimeSteps))
-    # Iterate over timesteps and reduce centerline data
-    for i in range(numTimeSteps):
-        points = centerlineData[i,:].reshape((-1,3))
-        reducedPoints[:,i] = reduceCenterline(n, points, N_local).flatten()
-
-
-    return reducedPoints
-
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
-    cleanData(numTimeSteps=500, outFilename='processedData_anoushsSillySinWav4.npz')
+    # cleanData(numTimeSteps=200, outFilename="processedData_policySeed_2.npz",permuteCenterlineReduction=True)
+    cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=200,permuteCenterlineReduction=True)
+    generateDataSetFromProcessedNPZs(saveMatlab=True)

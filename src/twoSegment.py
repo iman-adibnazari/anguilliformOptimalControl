@@ -27,7 +27,7 @@ config = dotenv_values(".env")
 ##################################################
 # Simulation Parameters                          #
 ##################################################
-USE_GUI = False
+USE_GUI = True
 numSteps = 500
 dt=0.0005
 attachPumps = False

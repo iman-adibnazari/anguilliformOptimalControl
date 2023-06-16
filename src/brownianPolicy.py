@@ -16,7 +16,7 @@ class brownianPolicy():
         self.rng = np.random.default_rng(self.seed)
     def stepInternalState(self): 
         # self.internalState = np.max([np.min([self.internalState + np.sqrt(self.dt)*self.rng.normal(0,1),0.01]),-0.01])
-        self.internalState = np.max([np.min([self.internalState + self.dt*self.rng.normal(0,1),0.025]),-0.025])
+        self.internalState = np.max([np.min([self.internalState + self.dt*self.rng.normal(0,1),0.03]),-0.03])
 
     def getAction(self,x,t): 
         # advance internal state of process 
