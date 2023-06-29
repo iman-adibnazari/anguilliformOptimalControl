@@ -11,6 +11,7 @@ from dotenv import dotenv_values
 from moviepy.editor import VideoClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 from scipy.io import savemat
+import hdf5storage
 
 
 config = dotenv_values(".env")
@@ -288,10 +289,10 @@ def generateDataSetFromProcessedNPZs(saveMatlab = False):
     np.savez(outfileName, stateData = stateDataFull, inputData = inputDataFull,centerlineData=centerlineDataFull,reducedCenterlineData = reducedCenterlineDataFull)
     if saveMatlab:
         outfileNameMat = config["currentDirectory"] +"data/processedData/processedDataSet.mat"
-        savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull})
-        
+        # savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull})
+        hdf5storage.savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull},format = '7.3', matlab_compatible=True,compress=False)
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
     # cleanData(numTimeSteps=200, outFilename="processedData_policySeed_2.npz",permuteCenterlineReduction=True)
-    cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=200,permuteCenterlineReduction=True)
+    # cleanDataMultiEpisodes(numEpisodes=30,numTimeSteps=200,permuteCenterlineReduction=True)
     generateDataSetFromProcessedNPZs(saveMatlab=True)

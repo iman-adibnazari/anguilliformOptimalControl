@@ -492,11 +492,11 @@ def createScene(rootNode, policySeed = 0):
 
 
 def main():
-    numEpisodes = 10
+    numEpisodes = 50
     # Make sure to load all SOFA libraries and plugins
     SofaRuntime.importPlugin("SofaBaseMechanics")
     SofaRuntime.importPlugin('SofaOpenglVisual')
-    for i in range(0,numEpisodes):
+    for i in range(44,numEpisodes):
 
         # Generate the root node
         root = Sofa.Core.Node("root")

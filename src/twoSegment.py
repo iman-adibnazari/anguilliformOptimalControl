@@ -174,7 +174,12 @@ def createScene(rootNode):
     ##################################################    
     centerline0 = segment0.addObject('BoxROI', template="Vec3d", name="centerline_roi", box=[-132, -80, 14.88, 400, 80, 16.89],drawBoxes=False)
 
+    ##################################################
+    # attach reference frame to segment 0            #
+    ##################################################
 
+    refFrameROI = segment0.addObject('BoxROI', template="Rigid3d", name="refFrame", box=[-132, 70, 12.88, -122, 90, 18.89],drawBoxes=True)
+    # refFrameSubSet = rootNode.addChild('MechanicalObject', name='refFrameSubSet', src='@../segment0.state', subset='@../segment0.refFrame.indices')
     ##################################################
     # segment1                                       #
     ##################################################
