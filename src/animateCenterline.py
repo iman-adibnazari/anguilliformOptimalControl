@@ -133,5 +133,5 @@ def animate(t):
 
 # Save video
 animation = VideoClip(animate, duration = duration)
-animation.write_gif(savePath + "test3.gif",fps=fps)
+animation.write_gif(savePath + "test4.gif",fps=fps)
 

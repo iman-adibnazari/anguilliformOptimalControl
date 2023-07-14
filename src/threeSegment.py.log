@@ -59,3 +59,20 @@
 /couple0/state.showIndices = 1
 /couple0/state.showIndicesScale = 0.002
 /couple0/state.showColor = 1 0 0 1
+
+--- NEW SESSION: 06/07/2023 16:05:24 ---
+/segment2/state.showObject = 1
+/segment2/state.showIndices = 1
+/segment2/state.showIndicesScale = 0.005
+/segment2/state.showColor = 1 1 1 1
+/segment0/state.showObject = 0
+/segment0/state.showIndices = 0
+/segment0/state.showIndicesScale = 0.005
+/segment0/state.showColor = 1 1 1 1
+
+--- NEW SESSION: 07/07/2023 17:34:21 ---
+/segment0/state.showIndices = 1
+/segment0/state.showIndicesScale = 0.002
+/segment0/state.showColor = 1 1 1 1
+/segment0/state.showColor = 1 1 1 1
+/segment0/state.showIndices = 0

@@ -179,6 +179,14 @@ def createScene(rootNode):
     ##################################################
 
     refFrameROI = segment0.addObject('BoxROI', template="Rigid3d", name="refFrame", box=[-132, 70, 12.88, -122, 90, 18.89],drawBoxes=True)
+    
+    ##################################################
+    # segment0/planarConstraint                      #
+    ##################################################
+    planarConstraint = segment0.addObject('PartialFixedConstraint', name='planarConstraint', indices='499', fixedDirections='0 0 0')
+
+    planarConstraint = segment0.addObject('PartialFixedConstraint', name='planarConstraint', indices='505 498 504', fixedDirections='1 0 1')
+    
     # refFrameSubSet = rootNode.addChild('MechanicalObject', name='refFrameSubSet', src='@../segment0.state', subset='@../segment0.refFrame.indices')
     ##################################################
     # segment1                                       #

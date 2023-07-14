@@ -291,8 +291,62 @@ def generateDataSetFromProcessedNPZs(saveMatlab = False):
         outfileNameMat = config["currentDirectory"] +"data/processedData/processedDataSet.mat"
         # savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull})
         hdf5storage.savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull},format = '7.3', matlab_compatible=True,compress=False)
+
+def animateReducedCenterline( dataFile = config["currentDirectory"] +"data/processedData/processedData_policySeed_0.npz",
+savePath = config["currentDirectory"] +"data/visualizations/",
+saveName = "reducedCenterline.mp4",
+xlim_max = 10,
+xlim_min = -1150, 
+zlim_max = 200,
+zlim_min = -200,
+numTimeSteps = 1000
+):
+    numFrames = numTimeSteps
+    fps = 30
+    duration = numFrames/fps
+    # Set up figure for animation
+    fig, ax = plt.subplots()
+    # Read in data
+    d = np.load(dataFile)
+    centerlineData_reduced = d['reducedCenterlineData'].transpose()
+    # Animation callback
+    def animate(t):
+        # global centerlineData
+        # global centerlineData_reduced
+        # Get frame index
+        i = int(round(t*fps))
+        # # Compute reduced centerline
+        # centerlineData_current = centerlineData[i,:]
+        # centerlineData_current = np.reshape(centerlineData_current,(int(centerlineData_current.size/3),3))
+        # centerlineData_reduced = reduceCenterline(n,centerlineData_current,N_local)
+        # Plot mesh points from original centerline
+        ax.clear()
+        # ax.scatter(centerlineData_current[:,0],centerlineData_current[:,2],marker='.',color='blue')
+        # Reshape reduced centerline for plotting of current frame
+        centerlineData_reduced_current = centerlineData_reduced[:,i] 
+        
+        centerlineData_reduced_current = np.reshape(centerlineData_reduced_current,(int(centerlineData_reduced_current.size/2),2))
+        
+        # Plot reduced centerline
+        ax.plot(centerlineData_reduced_current[:,0],centerlineData_reduced_current[:,1],color='red')
+        ax.set_xlim(xlim_min,xlim_max)
+        ax.set_ylim(zlim_min,zlim_max)
+        # ax.set_aspect('equal')
+        ax.set_title("Reduced Centerline")
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("z (m)")
+        return mplfig_to_npimage(fig)
+
+    # Create animation
+    animation = VideoClip(animate, duration=duration)
+    animation.write_videofile(savePath+saveName, fps=fps)
+
+
+
+
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
-    # cleanData(numTimeSteps=200, outFilename="processedData_policySeed_2.npz",permuteCenterlineReduction=True)
-    # cleanDataMultiEpisodes(numEpisodes=30,numTimeSteps=200,permuteCenterlineReduction=True)
+    # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
+    cleanDataMultiEpisodes(numEpisodes=1,numTimeSteps=1500,permuteCenterlineReduction=False)
     generateDataSetFromProcessedNPZs(saveMatlab=True)
+    animateReducedCenterline(numTimeSteps=1500,saveName="reducedCenterline_fullAssembly_constrained.mp4")

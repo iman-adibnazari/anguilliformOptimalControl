@@ -1,0 +1,15 @@
+
+--- NEW SESSION: 11/07/2023 20:46:10 ---
+/couple1/state.showIndices = 1
+/couple1/state.showIndicesScale = 0.001
+/couple1/state.showColor = 0 0 1 1
+
+--- NEW SESSION: 11/07/2023 21:39:50 ---
+/tail/state.showIndices = 1
+/tail/state.showIndicesScale = 0.00025
+/tail/state.showColor = 1 1 1 1
+/tail/state.showVectorsScale = 0.00025
+/tail/state.showColor = 0 0 1 1
+
+--- NEW SESSION: 13/07/2023 18:42:25 ---
+/segment0/state.showColor = 1 1 1 1

@@ -174,7 +174,14 @@ def createScene(rootNode):
     ##################################################
     # segment0/segment0_couple0_attachmentROI        #
     ##################################################
-    segment0_couple0_attachmentROI = segment0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=True)
+    segment0_couple0_attachmentROI = segment0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=False)
+
+    ##################################################
+    # segment0/constraints                           #
+    ##################################################
+    segment0_linearConstraint= segment0.addObject('FixedConstraint', name='fixedConstraint', indices='2905 6')
+    segment0_planarConstraint= segment0.addObject('PartialFixedConstraint', name='planarConstraint', indices='2907 2901 2899',fixedDirections='1 0 0')
+
 
     ##################################################
     # segment1                                       #
@@ -239,12 +246,12 @@ def createScene(rootNode):
     ##################################################
     # segment1/segment1_couple0_attachmentROI        #
     ##################################################
-    segment1_couple0_attachmentROI = segment1.addObject('BoxROI', template="Vec3d", name="segment1_couple0_attachmentROI", box= segment1_couple0_attachmentBounds, drawBoxes=True)
+    segment1_couple0_attachmentROI = segment1.addObject('BoxROI', template="Vec3d", name="segment1_couple0_attachmentROI", box= segment1_couple0_attachmentBounds, drawBoxes=False)
 
     ##################################################
     # segment1/segment1_couple1_attachmentROI        #
     ##################################################
-    segment1_couple1_attachmentROI = segment1.addObject('BoxROI', template="Vec3d", name="segment1_couple1_attachmentROI", box= segment1_couple1_attachmentBounds, drawBoxes=True)
+    segment1_couple1_attachmentROI = segment1.addObject('BoxROI', template="Vec3d", name="segment1_couple1_attachmentROI", box= segment1_couple1_attachmentBounds, drawBoxes=False)
 
     ##################################################
     # segment2                                       #
@@ -311,7 +318,13 @@ def createScene(rootNode):
     ##################################################
     # segment2/segment2_couple1_attachmentROI        #
     ##################################################
-    segment2_couple1_attachmentROI = segment2.addObject('BoxROI', template="Vec3d", name="segment2_couple1_attachmentROI", box= segment2_couple1_attachmentBounds, drawBoxes=True)
+    segment2_couple1_attachmentROI = segment2.addObject('BoxROI', template="Vec3d", name="segment2_couple1_attachmentROI", box= segment2_couple1_attachmentBounds, drawBoxes=False)
+
+    ##################################################
+    # segment2/constraints                      #
+    ##################################################
+    segment2_planarConstraint= segment2.addObject('PartialFixedConstraint', name='planarConstraint', indices='2905 2907 2901 2899',fixedDirections='1 0 1')
+
 
     ##################################################
     # couple0                                        #
@@ -340,12 +353,12 @@ def createScene(rootNode):
     ##################################################
     # couple0/couple0_segment0_attachmentROI         #
     ##################################################
-    couple0_segment0_attachmentROI = couple0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=True)
+    couple0_segment0_attachmentROI = couple0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=False)
 
     ##################################################
     # couple0/couple0_segment1_attachmentROI         #
     ##################################################
-    couple0_segment1_attachmentROI = couple0.addObject('BoxROI', template="Vec3d", name="segment1_couple0_attachmentROI", box= segment1_couple0_attachmentBounds, drawBoxes=True)
+    couple0_segment1_attachmentROI = couple0.addObject('BoxROI', template="Vec3d", name="segment1_couple0_attachmentROI", box= segment1_couple0_attachmentBounds, drawBoxes=False)
 
     ##################################################
     # couple1                                        #
@@ -374,12 +387,12 @@ def createScene(rootNode):
     ##################################################
     # couple1/couple1_segment1_attachmentROI         #
     ##################################################
-    couple1_segment1_attachmentROI = couple1.addObject('BoxROI', template="Vec3d", name="segment1_couple1_attachmentROI", box= segment1_couple1_attachmentBounds, drawBoxes=True)
+    couple1_segment1_attachmentROI = couple1.addObject('BoxROI', template="Vec3d", name="segment1_couple1_attachmentROI", box= segment1_couple1_attachmentBounds, drawBoxes=False)
 
     ##################################################
     # couple1/couple1_segment2_attachmentROI         #
     ##################################################
-    couple1_segment2_attachmentROI = couple1.addObject('BoxROI', template="Vec3d", name="segment2_couple1_attachmentROI", box= segment2_couple1_attachmentBounds, drawBoxes=True)
+    couple1_segment2_attachmentROI = couple1.addObject('BoxROI', template="Vec3d", name="segment2_couple1_attachmentROI", box= segment2_couple1_attachmentBounds, drawBoxes=False)
 
 
     ##################################################

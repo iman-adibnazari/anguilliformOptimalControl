@@ -27,7 +27,8 @@ config = dotenv_values(".env")
 # Simulation Parameters                          #
 ##################################################
 USE_GUI = False
-numSteps = 200
+numSteps = 2000
+numEpisodes = 20
 dt=0.001
 attachPumps = False
 segmentMass = 2 #kg
@@ -172,7 +173,13 @@ def createScene(rootNode, policySeed = 0):
     ##################################################
     # segment0/segment0_couple0_attachmentROI        #
     ##################################################
-    segment0_couple0_attachmentROI = segment0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=True)
+    segment0_couple0_attachmentROI = segment0.addObject('BoxROI', template="Vec3d", name="segment0_couple0_attachmentROI", box= segment0_couple0_attachmentBounds, drawBoxes=False)
+
+    ##################################################
+    # segment0/constraints                      #
+    ##################################################
+    segment0_linearConstraint= segment0.addObject('FixedConstraint', name='fixedConstraint', indices='2905 6')
+    segment0_planarConstraint= segment0.addObject('PartialFixedConstraint', name='planarConstraint', indices='2907 2901 2899',fixedDirections='1 0 0')
 
     ##################################################
     # segment1                                       #
@@ -310,6 +317,11 @@ def createScene(rootNode, policySeed = 0):
     # segment2/segment2_couple1_attachmentROI        #
     ##################################################
     segment2_couple1_attachmentROI = segment2.addObject('BoxROI', template="Vec3d", name="segment2_couple1_attachmentROI", box= segment2_couple1_attachmentBounds, drawBoxes=True)
+
+    ##################################################
+    # segment2/constraints                      #
+    ##################################################
+    segment2_planarConstraint= segment2.addObject('PartialFixedConstraint', name='planarConstraint', indices='2905 2907 2901 2899',fixedDirections='1 0 1')
 
     ##################################################
     # couple0                                        #
@@ -492,11 +504,10 @@ def createScene(rootNode, policySeed = 0):
 
 
 def main():
-    numEpisodes = 50
     # Make sure to load all SOFA libraries and plugins
     SofaRuntime.importPlugin("SofaBaseMechanics")
     SofaRuntime.importPlugin('SofaOpenglVisual')
-    for i in range(44,numEpisodes):
+    for i in range(0,numEpisodes):
 
         # Generate the root node
         root = Sofa.Core.Node("root")
