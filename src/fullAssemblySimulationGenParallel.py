@@ -28,7 +28,7 @@ config = dotenv_values(".env")
 ##################################################
 USE_GUI = False
 numSteps = 2000
-numEpisodes = 15
+numEpisodes = 10
 dt=0.001
 attachPumps = False
 headMass = 1 #kg
@@ -245,7 +245,7 @@ def createScene(rootNode, policySeed = 0):
     ##################################################
 
     ##################################################
-    # segment1/chamber0                            #
+    # segment1/chamber0                              #
     ##################################################
     chamber1_0 = segment1.addChild('chamber0')
     chamber1_0.addObject('MeshTopology', src='@../../chamber1_0Loader', name='chamber1_0Mesh')
@@ -521,11 +521,11 @@ def createScene(rootNode, policySeed = 0):
     rootNode.addObject('BilateralInteractionConstraint', template='Vec3d', object1='@couple2', object2='@tail', first_point='1', second_point='44')
 
     if recordCenterline: 
-        rootNode.addObject(centerlineStateExporterMulti(filetype=0, name='centerlineExporter', segments = [head, segment0, segment1,segment2, tail]))
+        rootNode.addObject(centerlineStateExporterMulti(filetype=0, name='centerlineExporter', segments = [head, segment0, segment1,segment2, tail],policySeed =policySeed))
     if recordFullState: 
-        rootNode.addObject(fullStateExporterMulti(filetype=0, name='stateExporter', segments = [head, segment0, segment1,segment2, tail]))
+        rootNode.addObject(fullStateExporterMulti(filetype=0, name='stateExporter', segments = [head, segment0, segment1,segment2, tail], policySeed =policySeed))
     if recordPressureInputs: 
-        rootNode.addObject(pressureInputRecorder(name='inputExporter', segments = [segment0, segment1, segment2]))
+        rootNode.addObject(pressureInputRecorder(name='inputExporter', segments = [segment0, segment1, segment2], policySeed =policySeed))
 
 
 
@@ -534,7 +534,7 @@ def main():
     # Make sure to load all SOFA libraries and plugins
     SofaRuntime.importPlugin("SofaBaseMechanics")
     SofaRuntime.importPlugin('SofaOpenglVisual')
-    for i in range(0,numEpisodes):
+    for i in range(8,numEpisodes):
 
         # Generate the root node
         root = Sofa.Core.Node("root")
