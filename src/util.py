@@ -12,6 +12,7 @@ from moviepy.editor import VideoClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 from scipy.io import savemat
 import hdf5storage
+import h5py
 
 
 config = dotenv_values(".env")
@@ -258,7 +259,7 @@ def processedNpzToMatlab():
         savemat(fm, d)
         print('generated ', fm, 'from', f)
 
-def generateDataSetFromProcessedNPZs(saveMatlab = False):
+def generateDataSetFromProcessedNPZs(saveMatlab = False, savehdf5 = False):
     npzFiles = glob.glob(config["currentDirectory"] + "data/processedData/"+"*.npz")
     numFiles = len(npzFiles)
     # Read in first file to get size of data
@@ -291,7 +292,13 @@ def generateDataSetFromProcessedNPZs(saveMatlab = False):
         outfileNameMat = config["currentDirectory"] +"data/processedData/processedDataSet.mat"
         # savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull})
         hdf5storage.savemat(outfileNameMat,{'stateData':stateDataFull,'inputData':inputDataFull,'centerlineData':centerlineDataFull,'reducedCenterlineData':reducedCenterlineDataFull},format = '7.3', matlab_compatible=True,compress=False)
-
+    if savehdf5:
+        outfileNamehdf5 = config["currentDirectory"] +"data/processedData/processedDataSet.hdf5"
+        with h5py.File(outfileNamehdf5, 'w') as f:
+            f.create_dataset('stateData', data=stateDataFull)
+            f.create_dataset('inputData', data=inputDataFull)
+            f.create_dataset('centerlineData', data=centerlineDataFull)
+            f.create_dataset('reducedCenterlineData', data=reducedCenterlineDataFull)
 def animateReducedCenterline( dataFile = config["currentDirectory"] +"data/processedData/processedData_policySeed_0.npz",
 savePath = config["currentDirectory"] +"data/visualizations/",
 saveName = "reducedCenterline.mp4",
@@ -341,6 +348,17 @@ numTimeSteps = 1000
     animation = VideoClip(animate, duration=duration)
     animation.write_videofile(savePath+saveName, fps=fps)
 
+def mat2hdf5(filepath = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/lopinf_rom_11_training.mat", outfilePath = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/lopinf_rom_11_training.hdf5"):
+    # Converts .mat file to .hdf5 file
+    # Read in large .mat file
+    data = hdf5storage.loadmat(filepath)
+    # Get keys for data
+    keys = data.keys()
+    # save data to hdf5 file
+    with h5py.File(outfilePath, 'w') as f:
+        for key in keys:
+            print(key)
+            f.create_dataset(key, data=data[key])
 
 
 
@@ -349,5 +367,8 @@ if __name__ == '__main__':
     # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
     # cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=2000,permuteCenterlineReduction=False)
-    generateDataSetFromProcessedNPZs(saveMatlab=True)
+    # generateDataSetFromProcessedNPZs(saveMatlab=False, savehdf5 = True)
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
+
+
+    mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/threeSegmentData200Timesteps/lopinf_rom_r_6.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/threeSegmentData200Timesteps/lopinf_rom_r_6.hdf5")
