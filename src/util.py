@@ -358,9 +358,74 @@ def mat2hdf5(filepath = config["currentDirectory"] +"data/archivedDataSets/FullA
     with h5py.File(outfilePath, 'w') as f:
         for key in keys:
             print(key)
-            f.create_dataset(key, data=data[key])
+            f.create_dataset(key, data=data[key],maxshape=(None,None,None),chunks=(4096,4096,1))
+
+def combineDataSets(inFile1 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5", inFile2 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/testSet.hdf5", outFile = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/fullDataSet.hdf5"):
+    # Read in hdf5s for each dataset
+    with h5py.File(inFile1, 'a') as ff4:
+        with h5py.File(inFile2, 'r') as ff3:
+            print("got here 0")
+            # Move stateData
+            state_dim1 = ff4['stateData'].shape[0]
+            state_dim2 = ff4['stateData'].shape[1]
+            state_dim3 = ff4['stateData'].shape[2]
+            state_newDim3 = ff3['stateData'].shape[2] + state_dim3
+            ff4['stateData'].resize((state_dim1,state_dim2,state_newDim3)) 
+            for i in range(state_newDim3-state_dim3):
+                ff4['stateData'][:,:,state_dim3+i] = ff3['stateData'][:,:,i]
+                ff4.flush()
+            print("got here 1")
+            # Move inputData
+            input_dim1 = ff4['inputData'].shape[0]
+            input_dim2 = ff4['inputData'].shape[1]
+            input_dim3 = ff4['inputData'].shape[2]
+            input_newDim3 = ff3['inputData'].shape[2] + input_dim3
+            ff4['inputData'].resize((input_dim1,input_dim2,input_newDim3))
+            for i in range(input_newDim3-input_dim3):
+                ff4['inputData'][:,:,input_dim3+i] = ff3['inputData'][:,:,i]
+                ff4.flush()
+            print("got here 2")
+            # Move centerlineData
+            centerline_dim1 = ff4['centerlineData'].shape[0]
+            centerline_dim2 = ff4['centerlineData'].shape[1]
+            centerline_dim3 = ff4['centerlineData'].shape[2]
+            centerline_newDim3 = ff3['centerlineData'].shape[2] + centerline_dim3
+            ff4['centerlineData'].resize((centerline_dim1,centerline_dim2,centerline_newDim3))
+            for i in range(centerline_newDim3-centerline_dim3):
+                ff4['centerlineData'][:,:,centerline_dim3+i] = ff3['centerlineData'][:,:,i]
+                ff4.flush()
+            print("got here 3")
+            # Move reducedCenterlineData
+            reducedCenterline_dim1 = ff4['reducedCenterlineData'].shape[0]
+            reducedCenterline_dim2 = ff4['reducedCenterlineData'].shape[1]
+            reducedCenterline_dim3 = ff4['reducedCenterlineData'].shape[2]
+            reducedCenterline_newDim3 = ff3['reducedCenterlineData'].shape[2] + reducedCenterline_dim3
+            ff4['reducedCenterlineData'].resize((reducedCenterline_dim1,reducedCenterline_dim2,reducedCenterline_newDim3))
+            for i in range(reducedCenterline_newDim3-reducedCenterline_dim3):
+                ff4['reducedCenterlineData'][:,:,reducedCenterline_dim3+i] = ff3['reducedCenterlineData'][:,:,i]
+                ff4.flush()
+            
+         
 
 
+
+
+    #     stateData1 = f['stateData'][:,:,:]
+    #     inputData1 = f['inputData'][:,:,:]
+    #     centerlineData1 = f['centerlineData'][:,:,:]
+    #     reducedCenterlineData1 = f['reducedCenterlineData'][:,:,:]
+    # with h5py.File(inFile2, 'r') as f:
+    #     stateData2 = f['stateData'][:,:,:]
+    #     inputData2 = f['inputData'][:,:,:]
+    #     centerlineData2 = f['centerlineData'][:,:,:]
+    #     reducedCenterlineData2 = f['reducedCenterlineData'][:,:,:]
+    # # Write concatenated data to new hdf5
+    # with h5py.File(outFile, 'w') as f:
+    #     f.create_dataset('stateData', data=np.concatenate((stateData1,stateData2),axis=2))
+    #     f.create_dataset('inputData', data=np.concatenate((inputData1,inputData2),axis=2))
+    #     f.create_dataset('centerlineData', data=np.concatenate((centerlineData1,centerlineData2),axis=2))
+    #     f.create_dataset('reducedCenterlineData', data=np.concatenate((reducedCenterlineData1,reducedCenterlineData2),axis=2))
+    
 
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
@@ -371,4 +436,6 @@ if __name__ == '__main__':
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
 
 
-    mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/threeSegmentData200Timesteps/lopinf_rom_r_6.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/threeSegmentData200Timesteps/lopinf_rom_r_6.hdf5")
+    # mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5")
+
+    combineDataSets()
