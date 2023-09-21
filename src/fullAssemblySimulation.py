@@ -98,9 +98,6 @@ def createScene(rootNode):
     rootNode.addObject('MeshGmshLoader', name='segment1Loader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment1.msh')
     rootNode.addObject('MeshGmshLoader', name='segment2Loader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment2.msh')
     rootNode.addObject('MeshGmshLoader', name='tailLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/tail.msh')
-    # rootNode.addObject('MeshSTLLoader', name='segment0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment0.stl')
-    # rootNode.addObject('MeshSTLLoader', name='segment1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment1.stl')
-    # rootNode.addObject('MeshSTLLoader', name='segment2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment2.stl')
     rootNode.addObject('MeshGmshLoader', name='couple0Loader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple0_1.msh')
     rootNode.addObject('MeshGmshLoader', name='couple1Loader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple1_2.msh')
     rootNode.addObject('MeshGmshLoader', name='couple2Loader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple2_tail.msh')
@@ -110,6 +107,14 @@ def createScene(rootNode):
     rootNode.addObject('MeshSTLLoader', name='chamber1_1Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber1_1.stl')
     rootNode.addObject('MeshSTLLoader', name='chamber2_0Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber2_0.stl')
     rootNode.addObject('MeshSTLLoader', name='chamber2_1Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber2_1.stl')
+    rootNode.addObject('MeshSTLLoader', name='headVisualLoader', filename=config["currentDirectory"]+'/meshes/fullAssembly/head.stl')
+    rootNode.addObject('MeshSTLLoader', name='segment0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment0.stl')
+    rootNode.addObject('MeshSTLLoader', name='segment1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment1.stl')
+    rootNode.addObject('MeshSTLLoader', name='segment2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment2.stl')
+    rootNode.addObject('MeshSTLLoader', name='tailVisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/tail.stl')
+    rootNode.addObject('MeshSTLLoader', name='couple0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple0_1.stl')
+    rootNode.addObject('MeshSTLLoader', name='couple1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple1_2.stl')
+    rootNode.addObject('MeshSTLLoader', name='couple2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple2_tail.stl')
 
 
     ##################################################
@@ -127,9 +132,19 @@ def createScene(rootNode):
 
 
     ##################################################
+    # head/visual                                #
+    ##################################################
+    headVisual = head.addChild("VisualModel")
+    
+    headVisual.addObject('OglModel', name='visualModel', src='@../../headVisualLoader', color=[0,0.42,0, 1], updateNormals=False)
+    headVisual.addObject('BarycentricMapping')
+
+
+
+    ##################################################
     # head/centerlineROI                         #
     ##################################################    
-    centerline_head = head.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
+    centerline_head = head.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
 
 
     # ################################################## TODO
@@ -154,13 +169,13 @@ def createScene(rootNode):
                      youngModulus=1000)
     segment0.addObject('UniformMass', totalMass=segmentMass)
     
-    # ##################################################
-    # # segment0/visual                                #
-    # ##################################################
-    # segment0Visual = segment0.addChild("VisualModel")
+    ##################################################
+    # segment0/visual                                #
+    ##################################################
+    segment0Visual = segment0.addChild("VisualModel")
     
-    # segment0Visual.addObject('OglModel', name='visualModel', src='@../../segment0VisualLoader', color=[0.5,0.5,0.5, 0.5], updateNormals=False)
-    # segment0Visual.addObject('BarycentricMapping')
+    segment0Visual.addObject('OglModel', name='visualModel', src='@../../segment0VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    segment0Visual.addObject('BarycentricMapping')
 
     ##################################################
     # segment0/constraintLayer                       #
@@ -203,7 +218,7 @@ def createScene(rootNode):
     ##################################################
     # segment0/centerlineROI                         #
     ##################################################    
-    centerline0 = segment0.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
+    centerline0 = segment0.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
 
     ##################################################
     # segment0/segment0_couple0_attachmentROI        #
@@ -229,12 +244,12 @@ def createScene(rootNode):
     segment1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
     segment1.addObject('UniformMass', totalMass=segmentMass)
-    # ##################################################
-    # # segment1/visual                                #
-    # ##################################################
-    # segment1Visual = segment1.addChild("VisualModel")
-    # segment1Visual.addObject('OglModel', name='visualModel', src='@../../segment1VisualLoader', color=[0.5,0.5,0.5, 0.5], updateNormals=False)
-    # segment1Visual.addObject('BarycentricMapping')
+    ##################################################
+    # segment1/visual                                #
+    ##################################################
+    segment1Visual = segment1.addChild("VisualModel")
+    segment1Visual.addObject('OglModel', name='visualModel', src='@../../segment1VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    segment1Visual.addObject('BarycentricMapping')
 
 
     ##################################################
@@ -275,7 +290,7 @@ def createScene(rootNode):
     ##################################################
     # segment1/centerlineROI                         #
     ##################################################  
-    centerline1 = segment1.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=True)
+    centerline1 = segment1.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=False)
    
     ##################################################
     # segment1/segment1_couple0_attachmentROI        #
@@ -299,12 +314,12 @@ def createScene(rootNode):
     segment2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
     segment2.addObject('UniformMass', totalMass=segmentMass)
-    # ##################################################
-    # # segment2/visual                                #
-    # ##################################################
-    # segment2Visual = segment1.addChild("VisualModel")
-    # segment2Visual.addObject('OglModel', name='visualModel', src='@../../segment2VisualLoader', color=[0.5,0.5,0.5, 0.5], updateNormals=False)
-    # segment2Visual.addObject('BarycentricMapping')
+    ##################################################
+    # segment2/visual                                #
+    ##################################################
+    segment2Visual = segment2.addChild("VisualModel")
+    segment2Visual.addObject('OglModel', name='visualModel', src='@../../segment2VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    segment2Visual.addObject('BarycentricMapping')
 
 
     ##################################################
@@ -347,7 +362,7 @@ def createScene(rootNode):
     ##################################################
     # segment2/centerlineROI                         #
     ##################################################  
-    centerline2 = segment2.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=True)
+    centerline2 = segment2.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=False)
 
     ##################################################
     # segment2/segment2_couple1_attachmentROI        #
@@ -373,9 +388,16 @@ def createScene(rootNode):
     tail.addObject('UniformMass', totalMass=tailMass)
 
     ##################################################
+    # tail/visual                                #
+    ##################################################
+    tailVisual = tail.addChild("VisualModel")
+    tailVisual.addObject('OglModel', name='visualModel', src='@../../tailVisualLoader', color=[0.01,0,1, 1], updateNormals=False)
+    tailVisual.addObject('BarycentricMapping')
+
+    ##################################################
     # tail/centerlineROI                         #
     ##################################################  
-    centerlineTail = tail.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=True)
+    centerlineTail = tail.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds,drawBoxes=False)
 
 
 
@@ -395,13 +417,13 @@ def createScene(rootNode):
     couple0.addObject('UniformMass', totalMass=coupleMass)
 
 
-    # ##################################################
-    # # couple0/visual                                 #
-    # ##################################################
-    # couple0Visual = couple0.addChild("VisualModel")
+    ##################################################
+    # couple0/visual                                 #
+    ##################################################
+    couple0Visual = couple0.addChild("VisualModel")
 
-    # couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.7,0.7,1, 0.5], updateNormals=False)
-    # couple0Visual.addObject('BarycentricMapping')
+    couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    couple0Visual.addObject('BarycentricMapping')
 
     ##################################################
     # couple0/couple0_segment0_attachmentROI         #
@@ -429,13 +451,13 @@ def createScene(rootNode):
     couple1.addObject('UniformMass', totalMass=coupleMass)
 
 
-    # ##################################################
-    # # couple1/visual                                 #
-    # ##################################################
-    # couple1Visual = couple0.addChild("VisualModel")
+    ##################################################
+    # couple1/visual                                 #
+    ##################################################
+    couple1Visual = couple1.addChild("VisualModel")
 
-    # couple1Visual.addObject('OglModel', name='visualModel', src='@../../couple1Loader', color=[0.7,0.7,1, 0.5], updateNormals=False)
-    # couple1Visual.addObject('BarycentricMapping')
+    couple1Visual.addObject('OglModel', name='visualModel', src='@../../couple1Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    couple1Visual.addObject('BarycentricMapping')
 
     ##################################################
     # couple1/couple1_segment1_attachmentROI         #
@@ -461,6 +483,14 @@ def createScene(rootNode):
                         youngModulus=1000000)
     
     couple2.addObject('UniformMass', totalMass=coupleMass)
+    ##################################################
+    # couple2/visual                                 #
+    ##################################################
+    couple2Visual = couple2.addChild("VisualModel")
+
+    couple2Visual.addObject('OglModel', name='visualModel', src='@../../couple2Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    couple2Visual.addObject('BarycentricMapping')
+
 
 
     ##################################################
