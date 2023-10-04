@@ -1,0 +1,5 @@
+
+--- NEW SESSION: 29/09/2023 11:57:14 ---
+/head/centerline_roi.box = -1200 -110 -3 100 110 100
+/head/centerline_roi.drawBoxes = 1
+/head/centerline_roi.box = -1200 -110 -3 100 110 3

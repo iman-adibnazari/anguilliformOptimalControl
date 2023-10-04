@@ -5,6 +5,8 @@ import numpy as np
 from dotenv import dotenv_values 
 import scipy.io
 import cvxpy as cp
+import logging
+import time
 
 # helper function to define reference trajectories
 # Function to provide coordinates of discretized centerline at a given time
@@ -36,7 +38,7 @@ def generateReferenceCoords(time,numPoints=20,a_max=10,l=1114.1947932504659,k=10
 
 
 class rhcPolicy_ERA(): 
-    def __init__(self,dt,*args, **kwargs):
+    def __init__(self,dt,T=50, *args, **kwargs):
         self.time = 0 # current time
         self.dt = dt # time step
         self.length = 1114.1947932504659 # mm
@@ -55,25 +57,80 @@ class rhcPolicy_ERA():
         self.n = 22 # number of states
         self.m = 6 # number of inputs
         self.p = 40 # number of outputs
-        self.T = 250 # prediction horizon
+        self.T = T # prediction horizon
         self.Q = np.eye(self.n) # state cost matrix
         self.R = np.eye(self.m) # input cost matrix
         self.P = np.eye(self.n) # terminal state cost matrix
+        # Formulate optimization problem
+        n = 22 # number of states
+        m = 6 # number of inputs
+        p = 40 # number of outputs
+        T = 100 # prediction horizon
+        Q = np.eye(n) # state cost matrix
+        R = np.eye(m) # input cost matrix
+        P = np.eye(n) # terminal state cost matrix
+        self.x = cp.Variable((n, T + 1))
+        self.x0 = cp.Parameter(n)
+        self.x0.value = np.zeros(n)
+        self.u = cp.Variable((m, T+1))
+        self.u0 = cp.Parameter(m)
+        self.u0.value = np.zeros(m)
+        self.du = cp.Variable((m, T))
+        self.y = cp.Variable((p, T + 1))
+        self.y_ref = cp.Parameter((p, T + 1))
+        # Costs and constraints
+        cost = 0
+        constr = []
+        constr+= [self.x[:, 0] == self.x0]
+        constr+= [self.u[:, 0] == self.u0]
+        constr+= [self.y[:, 0] == self.C @ self.x[:, 0] + self.D @ self.u[:, 0]]
 
-# TODO: Context - the era problem is correctly formulated in the notebook. Whats next is transferring that problem here. 
-                # 1) copy the code from the notebook here for initializing the the problem and assign the parameters for x0,u0, and yref to variables so that they can be changed on the fly 
-                # 2) figure out to pass the multiple control outputs from this module to the pressure controllers
-                # 3) state estimation using last state, last pressure input and reduced centerline -> reparametrize optimization with state estimate as initial condition and new reference trajectory -> pass out control inputs to pressure controllers
-                # 4) update timestep
-                # 5) for debugging, export reduced centerlines somewhere and plot them in a notebook later to make sure they are correct
-        self.rhcOpt = None 
+        for t in range(T):
+            # Apply cost for output trajectory
+            cost += cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
 
-    def stepInternalState(self): 
-        # self.internalState = np.max([np.min([self.internalState + np.sqrt(self.dt)*self.rng.normal(0,1),0.01]),-0.01])
-        self.internalState = np.max([np.min([self.internalState + self.dt*self.rng.normal(0,1),0.03]),-0.03])
+            
+            # # Only apply cost for odd output indices to penalize the z trajectory error
+            # cost_era += cp.sum_squares(y_era[1::2,t+1]-y_ref[1::2,t+1])
+            # # Regularize how far the x trajectory is from the origin
+            # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
-    def getAction(self,x,t): 
-        # advance internal state of process 
-        self.stepInternalState()
-        # return action 
-        return self.internalState
+            # if t % 2 == 1:
+            # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
+            cost+= cp.sum_squares(0.1*self.du[:, t])
+            constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= 1]
+            constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
+            constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
+            # constraints to limit change in input
+            # if t > 0:
+            #     constr_era += [cp.norm(u_era[:, t] - u_era[:, t - 1],"inf") <= 0.1]
+        # sums problem objectives and concatenates constraints.
+        self.rhcOpt = cp.Problem(cp.Minimize(cost), constr)
+
+
+    def getAction(self,x0, y_ref,u0):
+        # TODO: Context - For some reason this is returning pressure values really close to 0 for the first few iterations. I
+        # will leave it to run over the weekend.
+        # Things to check when I get back. 
+        # 1) Make some dummy variables that look at the computed state and output trajectories to see if theyre actually changing to the 
+        # reference trajectory.
+        # 2) Double check the reference trajectory is being computed and passed in correctly
+        
+
+
+        # set initial conditions for optimization
+        self.x0.value = x0.squeeze()
+        self.u0.value = u0.squeeze() # use previous control input as initial condition
+        self.y_ref.value = y_ref
+        # solve optimization problem
+        start = time.time()
+        self.rhcOpt.solve(solver='ECOS', verbose=True)
+        end = time.time()
+        # get first control input
+        controlInput = self.u.value[:,0]
+        logging.info("ControlOptimization")
+        logging.info('controlInput: {}'.format(controlInput.squeeze()))
+        logging.info('Optimization time: {}'.format(end-start))
+        # update timestep
+        self.time += self.dt
+        return controlInput
