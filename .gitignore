@@ -2,5 +2,7 @@
 data/
 .venv/
 
-./dumpState.data
-./loadedPlugins.ini
+dumpState.data
+loadedPlugins.ini
+runSofa.ini
+src/__pycache__/
