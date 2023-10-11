@@ -65,7 +65,7 @@ class rhcPolicy_ERA():
         n = 22 # number of states
         m = 6 # number of inputs
         p = 40 # number of outputs
-        T = 100 # prediction horizon
+        # T = 50 # prediction horizon
         Q = np.eye(n) # state cost matrix
         R = np.eye(m) # input cost matrix
         P = np.eye(n) # terminal state cost matrix
@@ -78,6 +78,7 @@ class rhcPolicy_ERA():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
+        self.u_max = 0.15
         # Costs and constraints
         cost = 0
         constr = []
@@ -87,7 +88,7 @@ class rhcPolicy_ERA():
 
         for t in range(T):
             # Apply cost for output trajectory
-            cost += cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
+            cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
 
             
             # # Only apply cost for odd output indices to penalize the z trajectory error
@@ -97,10 +98,13 @@ class rhcPolicy_ERA():
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= cp.sum_squares(0.1*self.du[:, t])
-            constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= 1]
+            cost+= cp.sum_squares(self.du[:, t])
+            constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
+            # Probably need to either add a more significant penalty to du or add a constraint to limit change in input
+
+
             # constraints to limit change in input
             # if t > 0:
             #     constr_era += [cp.norm(u_era[:, t] - u_era[:, t - 1],"inf") <= 0.1]
@@ -117,19 +121,19 @@ class rhcPolicy_ERA():
         # 2) Double check the reference trajectory is being computed and passed in correctly
         
 
-
         # set initial conditions for optimization
         self.x0.value = x0.squeeze()
         self.u0.value = u0.squeeze() # use previous control input as initial condition
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='ECOS', verbose=True)
+        self.rhcOpt.solve(solver='SCS', verbose=True)
         end = time.time()
         # get first control input
-        controlInput = self.u.value[:,0]
+        controlInput = self.u.value[:,1]
         logging.info("ControlOptimization")
         logging.info('controlInput: {}'.format(controlInput.squeeze()))
+        print('controlInput: {}'.format(controlInput.squeeze()))
         logging.info('Optimization time: {}'.format(end-start))
         # update timestep
         self.time += self.dt

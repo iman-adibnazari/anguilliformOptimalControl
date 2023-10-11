@@ -39,8 +39,8 @@ class stateEstimator_ERA():
         y = y.reshape(-1,1)
         # Update state estimate
         self.u = np.reshape(u,(self.m,1))
+        self.x_hat = self.A @ self.x_hat + self.B @ self.u - self.L @ (self.y_hat-y)
         self.y_hat = self.C @ self.x_hat
-        self.x_hat = self.A @ self.x_hat + self.B @ self.u - self.L @ (y-self.y_hat)
         if self.logResults:
             logging.info('u: {}'.format(self.u.squeeze()))
             logging.info('x_hat: {}'.format(self.x_hat.squeeze()))

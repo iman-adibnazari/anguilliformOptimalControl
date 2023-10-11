@@ -5,8 +5,10 @@ import Sofa.constants.Key as Key
 import numpy as np
 from dotenv import dotenv_values 
 from rhcPolicy_ERA import rhcPolicy_ERA
+from rhcPolicy_randomizedOutput import rhcPolicy_randomizedOutput
 from stateEstimator_ERA import stateEstimator_ERA
 import logging
+import h5py
 
 config = dotenv_values(".env")
 ''' 
@@ -24,7 +26,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.chambers = chambers
         self.saveOutput=saveOutput
         self.segments = segments
-        self.rhcPolicy = rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.rhcPolicy =  rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
         self.stateEstimator = stateEstimator_ERA(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         for pressureConstraint in self.pressureConstraints:
@@ -38,7 +40,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.avgMatrix = np.zeros((self.n_redCenterline,self.n_redLocal))
         self.redCenterlineOffset = np.zeros((self.n_redCenterline*2)) 
         print(self.name.getValueString().__str__())
-
+        self.saveVerificationSet = True
 
     # helper function to define reference trajectories
     # Function to provide coordinates of discretized centerline at a given time
@@ -83,7 +85,6 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
             y_ref[:,i] = self.generateReferenceCoords(time = time+i,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
         return y_ref
 
-
     def onAnimateBeginEvent(self, e):
         t=self.step_id*self.deltaT # get current time step
         pressures = np.zeros(len(self.pressureConstraints))
@@ -124,7 +125,6 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
                 # find n_redLocal closest points in full centerline closest to the discretized point in the x direction and the average z value
                 idx = np.argsort((centerline_t[:,0]-xmin-i*dx)**2+np.abs(centerline_t[:,2]-zavg)**2)[0:self.n_redLocal]
     
-
                 # populate averaging matrix
                 self.avgMatrix[i,idx] = 1/self.n_redLocal
 
@@ -156,7 +156,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ######### solve ROM MPC optimization for control input #########
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=250) 
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=30) 
         # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
 
@@ -165,4 +165,19 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         for i in range(len(self.pressureConstraints)): # note! Make sure theyre ordered the right way
             self.pressureConstraints[i].value = [pressures[i]]
 
+
+        # Save verification data for debugging
+        if self.saveVerificationSet:
+            filename = config["currentDirectory"]+"data/verificationData/"+"verification" + "_step_" + self.step_id.__str__() + ".hdf5"
+            with h5py.File(filename, 'w') as f:
+                f.create_dataset('k', data=self.step_id)
+                f.create_dataset('centerline', data=centerlinePts_full)
+                f.create_dataset('y', data=y)
+                f.create_dataset('redCenterline', data=redCenterline)
+                f.create_dataset('x_hat', data=x_hat)
+                f.create_dataset('y_ref', data=y_ref)
+                f.create_dataset('u', data=pressures)
+                f.create_dataset('avgMatrix', data=self.avgMatrix)      
+                f.create_dataset('t', data=t)
+        # Update timestep        
         self.step_id += 1

@@ -59,7 +59,7 @@ def reduceCenterline(n, points, N_local = 20,
 
 
 def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20,
-                                permuteCenterlineReduction = False, # If true, that means centerline should be discretized along the z axis instead of the x axis as usual
+                                permuteCenterlineReduction = False, saveAvgMat = True# If true, that means centerline should be discretized along the z axis instead of the x axis as usual
                                 ):
     '''
     reduces the number of points in the centerline data to n discretized points to form full reduced output matrix for the episode
@@ -89,7 +89,7 @@ def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20,
     xmin = np.min(centerline_t[:,0])
     xmax = np.max(centerline_t[:,0])
     # compute average z value of centerline
-    zavg = -240#np.mean(centerline_t[:,2])
+    zavg = 0#np.mean(centerline_t[:,2])
     # find distance between discretization points
     dx = (xmax-xmin)/(n_redCenterline-1)
     # initialize averaging matrix mapping from full centerline to reduced centerline
@@ -97,9 +97,8 @@ def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20,
     # loop over discretized points to find closest points in full centerline
     for i in range(n_redCenterline):
         # find n_redLocal closest points in full centerline closest to the discretized point in the x direction and the average z value
-        idx = np.argsort(np.abs(centerline_t[:,0]-xmin-i*dx)+2*np.abs(centerline_t[:,2]-zavg))[0:n_redLocal]
+        idx = np.argsort((centerline_t[:,0]-xmin-i*dx)**2+np.abs(centerline_t[:,2]-zavg)**2)[0:n_redLocal]
         # idx = np.argsort(np.abs(centerline_t[:,0]-(xmin+i*dx)))[:n_redLocal]
-
         # populate averaging matrix
         avgMatrix[i,idx] = 1/n_redLocal
 
@@ -134,6 +133,8 @@ def reduceCenterlineFullEpisode(n, centerlineData, N_local = 20,
             redCenterline_t = np.flip(redCenterline_t,1)
         # populate reduced centerline matrix
         reducedPoints[i,:] = redCenterline_t.flatten()
+    if saveAvgMat:
+        np.save(config["currentDirectory"] +"avgMatrix.npy",avgMatrix)
 
     return reducedPoints
 
@@ -146,7 +147,7 @@ def cleanData(stateDataFilePathPrefix = "stateExporter_policySeed_0_step_",
               outFilename = "processedData_policySeed_0.npz",
               permuteCenterlineReduction = False, # If true, that means centerline should be discretized along the z axis instead of the x axis as usual
               n_redCenterline = 20, # number of discretized points in reduced centerline
-              n_redLocal = 3, # number of points to average over closest to the discretized points
+              n_redLocal = 20, # number of points to average over closest to the discretized points
               ):
     
     # Parameters for reduced centerline
@@ -431,11 +432,11 @@ if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
     # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
-    # cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=2000,permuteCenterlineReduction=False)
+    cleanDataMultiEpisodes(numEpisodes=1,numTimeSteps=500,permuteCenterlineReduction=False, )
     # generateDataSetFromProcessedNPZs(saveMatlab=False, savehdf5 = True)
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
 
 
     # mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5")
 
-    combineDataSets()
+    # combineDataSets()

@@ -337,7 +337,7 @@ def createScene(rootNode):
     ##################################################
 
     ##################################################
-    # segment2/chamber0                            #
+    # segment2/chamber0                              #
     ##################################################
     chamber2_0 = segment2.addChild('chamber0')
     chamber2_0.addObject('MeshTopology', src='@../../chamber2_0Loader', name='chamber2_0Mesh')
@@ -357,8 +357,7 @@ def createScene(rootNode):
     chamber2_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
                      triangles='@chamber2_1Mesh.triangles', valueType='pressure')
     chamber2_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
-
-
+    
     # chamber2_1.addObject(PressureConstraintController(dt,policy_c21,savePressureInputs,chamber2_1,name="chamber2_1Controller"))
     
     ##################################################
