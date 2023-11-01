@@ -5,8 +5,10 @@ import Sofa.constants.Key as Key
 import numpy as np
 from dotenv import dotenv_values 
 from rhcPolicy_ERA import rhcPolicy_ERA
+from rhcPolicy_LOpInf import rhcPolicy_LOpInf
 from rhcPolicy_randomizedOutput import rhcPolicy_randomizedOutput
 from stateEstimator_ERA import stateEstimator_ERA
+from stateEstimator_LOpInf import stateEstimator_LOpInf
 import logging
 import h5py
 
@@ -21,13 +23,13 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
         self.step_id = 0 
         self.length = 1114.1947932504659 # mm
-        self.T = 50 # prediction horizon
+        self.T = 160 # prediction horizon
         self.deltaT = deltaT
         self.chambers = chambers
         self.saveOutput=saveOutput
         self.segments = segments
-        self.rhcPolicy =  rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_ERA(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.rhcPolicy =  rhcPolicy_LOpInf(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_LOpInf(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
@@ -44,7 +46,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
     # helper function to define reference trajectories
     # Function to provide coordinates of discretized centerline at a given time
-    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=10,omega=7,x_shift = 0,z_shift = 0):
+    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=10,omega=3,x_shift = 0,z_shift = 0):
         # Generate 10 times number of x coordinates as desired points
         x = np.linspace(0,l,numPoints*1000)
         dx = x[1]-x[0]
@@ -66,6 +68,8 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         # z = z-z[0]
         x_ref = x_ref+x_shift
         z_ref = z_ref+z_shift
+        # Flip sign of x coordinates to take into account coordinate frame facing out from the front of the eel
+        x_ref = -x_ref
         # Flip order of reference coords
         x_ref = np.flip(x_ref)
         z_ref = np.flip(z_ref)
@@ -156,7 +160,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ######### solve ROM MPC optimization for control input #########
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=30) 
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=15, omega = 120, k=15) 
         # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
 

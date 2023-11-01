@@ -451,7 +451,6 @@ def createScene(rootNode):
 
     couple1.addObject('UniformMass', totalMass=coupleMass)
 
-
     ##################################################
     # couple1/visual                                 #
     ##################################################
@@ -562,8 +561,6 @@ def createScene(rootNode):
     # Attach pressure controller                     #
     ##################################################
     rootNode.addObject(PressureConstraintController_fullBodyROMPC(dt, chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [head, segment0, segment1,segment2, tail],saveOutput = 0))
-
-
 
     ##################################################
     # Set up data recording                          #

@@ -37,7 +37,7 @@ def generateReferenceCoords(time,numPoints=20,a_max=10,l=1114.1947932504659,k=10
 
 
 
-class rhcPolicy_ERA(): 
+class rhcPolicy_DMDc(): 
     def __init__(self,dt,T=50, *args, **kwargs):
         self.time = 0 # current time
         self.dt = dt # time step
@@ -45,11 +45,10 @@ class rhcPolicy_ERA():
         # Read in system matrices and offset vectors
         systemMatFile = kwargs.get("systemMatFile")
         systemMats = scipy.io.loadmat(systemMatFile)
-        self.A = systemMats['A_era']
-        self.B = systemMats['B_era']
-        self.C = systemMats['C_era']
-        self.D = systemMats['D_era']
-        self.L = systemMats['L_era']
+        self.A = systemMats['A_dmdc']
+        self.B = systemMats['B_dmdc']
+        self.C = systemMats['C_dmdc']
+        self.L = systemMats['L_dmdc']
         # Initialize ROM state estimate
         self.x_hat = np.zeros((self.A.shape[0],1))
         # Initialize optimization problem for rhc using ROM state as initial condition
@@ -84,7 +83,7 @@ class rhcPolicy_ERA():
         constr = []
         constr+= [self.x[:, 0] == self.x0]
         constr+= [self.u[:, 0] == self.u0]
-        constr+= [self.y[:, 0] == self.C @ self.x[:, 0] + self.D @ self.u[:, 0]]
+        constr+= [self.y[:, 0] == self.C @ self.x[:, 0]]
 
         for t in range(T):
             # Apply cost for output trajectory
@@ -98,8 +97,7 @@ class rhcPolicy_ERA():
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 10*cp.sum_squares(self.du[:, t])
-            cost += 250*cp.sum_squares(self.u[:, t+1])
+            cost+= cp.sum_squares(self.du[:, t])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
@@ -114,14 +112,6 @@ class rhcPolicy_ERA():
 
 
     def getAction(self,x0, y_ref,u0):
-        # TODO: Context - For some reason this is returning pressure values really close to 0 for the first few iterations. I
-        # will leave it to run over the weekend.
-        # Things to check when I get back. 
-        # 1) Make some dummy variables that look at the computed state and output trajectories to see if theyre actually changing to the 
-        # reference trajectory.
-        # 2) Double check the reference trajectory is being computed and passed in correctly
-        
-
         # set initial conditions for optimization
         self.x0.value = x0.squeeze()
         self.u0.value = u0.squeeze() # use previous control input as initial condition
