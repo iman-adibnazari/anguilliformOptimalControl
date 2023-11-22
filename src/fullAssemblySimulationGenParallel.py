@@ -31,10 +31,21 @@ numSteps = 2000
 numEpisodes = 10
 dt=0.001
 attachPumps = False
-headMass = 1 #kg
-segmentMass = 1 #kg
-coupleMass = 0.1 #kg
-tailMass = 1 #kg
+
+headMass = 0.727 #kg
+segmentMass = 2.14 #kg
+coupleMass = 0.266 #kg
+tailMass = 1.74 #kg
+
+headModulus = 2000 #kPa
+segmentModulus = 666.78 #kPa
+coupleModulus = 20000 #kPa
+tailModulus = 125 #kPa
+
+segmentPoisson = 0.48
+couplePoisson = 0.35
+headPoisson = 0.35
+tailPoisson = 0.42
 
 
 ##################################################
@@ -118,7 +129,7 @@ def createScene(rootNode, policySeed = 0):
     head.addObject('SparseLDLSolver', name='directSolver')
     head.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
 
-    head.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3, youngModulus=10000)
+    head.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=headPoisson, youngModulus=headModulus)
     head.addObject('UniformMass', totalMass=headMass)
 
 
@@ -146,8 +157,8 @@ def createScene(rootNode, policySeed = 0):
     segment0.addObject('SparseLDLSolver', name='directSolver')
     segment0.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
 
-    segment0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                     youngModulus=1000)
+    segment0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+                     youngModulus=segmentModulus)
     segment0.addObject('UniformMass', totalMass=segmentMass)
     
     # ##################################################
@@ -221,8 +232,8 @@ def createScene(rootNode, policySeed = 0):
     segment1.addObject('EulerImplicit', name='odesolver')
     segment1.addObject('SparseLDLSolver', name='directSolver')
     segment1.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    segment1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                     youngModulus=1000)
+    segment1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+                     youngModulus=segmentModulus)
     segment1.addObject('UniformMass', totalMass=segmentMass)
     # ##################################################
     # # segment1/visual                                #
@@ -291,8 +302,8 @@ def createScene(rootNode, policySeed = 0):
     segment2.addObject('EulerImplicit', name='odesolver')
     segment2.addObject('SparseLDLSolver', name='directSolver')
     segment2.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    segment2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                     youngModulus=1000)
+    segment2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+                     youngModulus=segmentModulus)
     segment2.addObject('UniformMass', totalMass=segmentMass)
     # ##################################################
     # # segment2/visual                                #
@@ -364,8 +375,8 @@ def createScene(rootNode, policySeed = 0):
     tail.addObject('EulerImplicit', name='odesolver')
     tail.addObject('SparseLDLSolver', name='directSolver')
     tail.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    tail.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                        youngModulus=1000)
+    tail.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=tailPoisson,
+                        youngModulus=tailModulus)
     tail.addObject('UniformMass', totalMass=tailMass)
 
     ##################################################
@@ -385,8 +396,8 @@ def createScene(rootNode, policySeed = 0):
     couple0.addObject('EulerImplicit', name='odesolver')
     couple0.addObject('SparseLDLSolver', name='directSolver')
     couple0.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    couple0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                     youngModulus=1000000)
+    couple0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+                     youngModulus=coupleModulus)
 
     couple0.addObject('UniformMass', totalMass=coupleMass)
 
@@ -419,8 +430,8 @@ def createScene(rootNode, policySeed = 0):
     couple1.addObject('EulerImplicit', name='odesolver')
     couple1.addObject('SparseLDLSolver', name='directSolver')
     couple1.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    couple1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                     youngModulus=1000000)
+    couple1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+                     youngModulus=coupleModulus)
 
     couple1.addObject('UniformMass', totalMass=coupleMass)
 
@@ -454,8 +465,8 @@ def createScene(rootNode, policySeed = 0):
     couple2.addObject('EulerImplicit', name='odesolver')
     couple2.addObject('SparseLDLSolver', name='directSolver')
     couple2.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
-    couple2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
-                        youngModulus=1000000)
+    couple2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+                        youngModulus=coupleModulus)
     
     couple2.addObject('UniformMass', totalMass=coupleMass)
 

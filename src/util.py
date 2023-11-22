@@ -432,7 +432,7 @@ if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
     # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
-    cleanDataMultiEpisodes(numEpisodes=1,numTimeSteps=2300,permuteCenterlineReduction=False, )
+    cleanDataMultiEpisodes(numEpisodes=1,numTimeSteps=1750,permuteCenterlineReduction=False, )
     # generateDataSetFromProcessedNPZs(saveMatlab=False, savehdf5 = True)
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
 
