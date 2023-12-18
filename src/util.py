@@ -201,7 +201,7 @@ def cleanData(stateDataFilePathPrefix = "stateExporter_policySeed_0_step_",
     # reducedCenterlineDataFull = np.zeros((numFiles,2*n_redCenterline))
     # reducedCenterlineDataFull[0,:] = reduceCenterline(n_redCenterline, centerlineData.reshape((-1,3)), n_redLocal).flatten()
 
-        
+
     # form matrices of data
     for i in range(1,numFiles):
         filename = filepath + filenamePrefix + int(round(i)).__str__() + filenameSuffix
@@ -296,10 +296,10 @@ def generateDataSetFromProcessedNPZs(saveMatlab = False, savehdf5 = False):
     if savehdf5:
         outfileNamehdf5 = config["currentDirectory"] +"data/processedData/processedDataSet.hdf5"
         with h5py.File(outfileNamehdf5, 'w') as f:
-            f.create_dataset('stateData', data=stateDataFull)
-            f.create_dataset('inputData', data=inputDataFull)
-            f.create_dataset('centerlineData', data=centerlineDataFull)
-            f.create_dataset('reducedCenterlineData', data=reducedCenterlineDataFull)
+            f.create_dataset('stateData', data=stateDataFull,maxshape=(None,None,None),chunks=(4096,4096,1))
+            f.create_dataset('inputData', data=inputDataFull,maxshape=(None,None,None),chunks=(4096,4096,1))
+            f.create_dataset('centerlineData', data=centerlineDataFull,maxshape=(None,None,None),chunks=(4096,4096,1))
+            f.create_dataset('reducedCenterlineData', data=reducedCenterlineDataFull,maxshape=(None,None,None),chunks=(4096,4096,1))
 def animateReducedCenterline( dataFile = config["currentDirectory"] +"data/processedData/processedData_policySeed_0.npz",
 savePath = config["currentDirectory"] +"data/visualizations/",
 saveName = "reducedCenterline.mp4",
@@ -361,7 +361,7 @@ def mat2hdf5(filepath = config["currentDirectory"] +"data/archivedDataSets/FullA
             print(key)
             f.create_dataset(key, data=data[key],maxshape=(None,None,None),chunks=(4096,4096,1))
 
-def combineDataSets(inFile1 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5", inFile2 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/testSet.hdf5", outFile = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/fullDataSet.hdf5"):
+def combineDataSets(inFile1 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/trainingDataSet.hdf5", inFile2 = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/testDataSet.hdf5", outFile = config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/fullDataSet.hdf5"):
     # Read in hdf5s for each dataset
     with h5py.File(inFile1, 'a') as ff4:
         with h5py.File(inFile2, 'r') as ff3:
@@ -405,11 +405,6 @@ def combineDataSets(inFile1 = config["currentDirectory"] +"data/archivedDataSets
             for i in range(reducedCenterline_newDim3-reducedCenterline_dim3):
                 ff4['reducedCenterlineData'][:,:,reducedCenterline_dim3+i] = ff3['reducedCenterlineData'][:,:,i]
                 ff4.flush()
-            
-         
-
-
-
 
     #     stateData1 = f['stateData'][:,:,:]
     #     inputData1 = f['inputData'][:,:,:]
@@ -432,11 +427,11 @@ if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
     # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
-    cleanDataMultiEpisodes(numEpisodes=1,numTimeSteps=1750,permuteCenterlineReduction=False, )
+    # cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=2000,permuteCenterlineReduction=False, )
     # generateDataSetFromProcessedNPZs(saveMatlab=False, savehdf5 = True)
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
 
 
     # mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5")
 
-    # combineDataSets()
+    combineDataSets()
