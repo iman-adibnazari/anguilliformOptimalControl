@@ -428,10 +428,10 @@ if __name__ == '__main__':
     # cleanData(numTimeSteps=3000, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
     # cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=2000,permuteCenterlineReduction=False, )
-    # generateDataSetFromProcessedNPZs(saveMatlab=False, savehdf5 = True)
+    generateDataSetFromProcessedNPZs(saveMatlab=True, savehdf5 = True)
     # animateReducedCenterline(numTimeSteps=1999,saveName="reducedCenterline_fullAssembly_constrained.mp4")
 
 
     # mat2hdf5(filepath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet.mat", outfilePath=config["currentDirectory"] +"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/trainingSet_test.hdf5")
 
-    combineDataSets()
+    # combineDataSets()

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     ####### # Set up hyperparameters for all ROMs  #######
     n_timesteps = 2000 # Number of timesteps to pull from each episode
     dt = 0.001
-    n_train = 7 # Number of training episodes
+    n_train = 3 # Number of training episodes
     ns_ROM = np.arange(2,202,2) # Dimensions of ROM state space
 
 
@@ -168,75 +168,148 @@ if __name__ == "__main__":
     #     # del U_era, Y_era, YY, UU, IR, H, Hprime, U, S, Vh, Sigma_tilde_is, Sigma_tilde_sqrt, Em, Ep, A_era, B_era, C_era, D_era
     # print("Done generating OKID + ERA ROMs.")
 
-    ####### Generate DMDc ROMs #######
-    print("Generating DMDc ROMs...")
-    print("got here 1")
-    # Initialize data matrices for training and testing
-    X_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, 4096))
-    Xprime_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, 4096))
-    Upsilon_train = da.zeros((l,(n_timesteps-1)*n_train), chunks=(4096, 4096))
-    Y_train = da.zeros((m,(n_timesteps-1)*n_train), chunks=(4096, 4096))
-    print("got here 2")
-    # Load in data from training episodes
-    for i in range(n_train):
-        X_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = X_fom[:,:-1,i]
-        Xprime_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = X_fom[:,1:,i]
-        Upsilon_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = U_fom[:,:-1,i]
-        Y_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = Y_fom[:,:-1,i]
-    print("got here 3")
-    # Form snapshot matrices for DMDc
-    Omega = da.concatenate([X_train,Upsilon_train],axis=0)
-    print("got here 4")
+    # ####### Generate DMDc ROMs #######
+    # print("Generating DMDc ROMs...")
+    # print("got here 1")
+    # # Initialize data matrices for training and testing
+    # X_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
+    # Xprime_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
+    # Upsilon_train = da.zeros((l,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
+    # Y_train = da.zeros((m,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
+    # print("got here 2")
+    # # Load in data from training episodes
+    # for i in range(n_train):
+    #     X_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = X_fom[:,:-1,i]
+    #     Xprime_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = X_fom[:,1:,i]
+    #     Upsilon_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = U_fom[:,:-1,i]
+    #     Y_train[:,i*(n_timesteps-1):(i+1)*(n_timesteps-1)] = Y_fom[:,:-1,i]
+    # print("got here 3")
+    # # Form snapshot matrices for DMDc
+    # Omega = da.concatenate([X_train,Upsilon_train],axis=0)
+    # print("got here 4")
+    # # # Precompute truncated SVD of Omega
+    # p_dmd = (n_timesteps-1)*n_train# dimension of reduced input space
+    # # U_tilde,Sigma_tilde,Vh_tilde = da.linalg.svd(Omega)
+    # # # Truncate SVD matrices to form rank p_dmd approximation
+    # # U_tilde = U_tilde[:,0:p_dmd]
+    # # Sigma_tilde = Sigma_tilde[0:p_dmd]
+    # # Vh_tilde = Vh_tilde[0:p_dmd,:]
+    # # # Vh_tilde = da.conj(da.transpose(V_tilde))
+    # # Sigma_tilde = da.diag(Sigma_tilde) # convert Sigma_tilde to diagonal matrix
+    # # # Evaluate SVD matrices
+    # # U_tilde, Sigma_tilde, Vh_tilde = da.compute(U_tilde, Sigma_tilde, Vh_tilde)
+    # # # Convert np arrays back into dask arrays
+    # # U_tilde = da.from_array(U_tilde)
+    # # Sigma_tilde = da.from_array(Sigma_tilde)
+    # # Vh_tilde = da.from_array(Vh_tilde)
+    # # print("got here 5")
 
-    for n_ROM in ns_ROM:
-        # Decompose snapshot matrix using truncated SVD
-        p_dmd = 1500
-        r_dmd = n_ROM
-        print("got here 5")
-        U_tilde,Sigma_tilde,Vh_tilde = da.linalg.svd_compressed(Omega, p_dmd)
-        # Vh_tilde = da.conj(da.transpose(V_tilde))
-        Sigma_tilde = da.diag(Sigma_tilde)
-        U_hat, Sigma_hat, V_hat = da.linalg.svd_compressed(Xprime_train, r_dmd)
-        Sigma_hat = da.diag(Sigma_hat)
-        print("got here 6")
-        # Compute system state evolution matrices
-        U_tilde_1 = U_tilde[0:n,:]
-        U_tilde_2 = U_tilde[n:,:]
-        A_dmdc = (U_hat.conj().T)@Xprime_train@(Vh_tilde.conj().T)@(da.linalg.inv(Sigma_tilde))@(U_tilde_1.conj().T)@U_hat
-        B_dmdc = (U_hat.conj().T)@Xprime_train@(Vh_tilde.conj().T)@(da.linalg.inv(Sigma_tilde))@(U_tilde_2.conj().T)
+    # for n_ROM in ns_ROM:
+    #     # Decompose snapshot matrix using truncated SVD
+    #     r_dmd = n_ROM
+    #     p_dmd = (n_timesteps-1)*n_train# dimension of reduced input space
 
-        print("got here 7")
+    #     print("got here 5")
+    #     U_tilde,Sigma_tilde,Vh_tilde = da.linalg.svd(Omega)
+    #     # Truncate SVD matrices to form rank p_dmd approximation
+    #     U_tilde = U_tilde[:,0:p_dmd]
+    #     Sigma_tilde = Sigma_tilde[0:p_dmd]
+    #     Vh_tilde = Vh_tilde[0:p_dmd,:]
+    #     # Vh_tilde = da.conj(da.transpose(V_tilde))
+    #     Sigma_tilde = da.diag(Sigma_tilde) # convert Sigma_tilde to diagonal matrix
+    #     U_hat, Sigma_hat, Vh_hat = da.linalg.svd(Xprime_train)
+    #     # Truncate SVD matrices to form rank r_dmd approximation
+    #     U_hat = U_hat[:,0:r_dmd]
+    #     Sigma_hat = Sigma_hat[0:r_dmd]
+    #     Vh_hat = Vh_hat[0:p_dmd,:]
+    #     Sigma_hat = da.diag(Sigma_hat) # convert Sigma_hat to diagonal matrix
+    #     print("got here 6")
+    #     # Compute system state evolution matrices
+    #     U_tilde_1 = U_tilde[0:n,:]
+    #     U_tilde_2 = U_tilde[n:,:]
+    #     A_dmdc = (U_hat.conj().T)@Xprime_train@(Vh_tilde.conj().T)@(da.linalg.inv(Sigma_tilde))@(U_tilde_1.conj().T)@U_hat
+    #     B_dmdc = (U_hat.conj().T)@Xprime_train@(Vh_tilde.conj().T)@(da.linalg.inv(Sigma_tilde))@(U_tilde_2.conj().T)
 
-        # Solve for system output matrix from full order system
-        ys = Y_train[:,0:100]
+    #     print("got here 7")
+    #     ys = Y_train[:,0:250]
 
-        # compute approximate pseudoinverse of data matrix using SVD
-        # X_train = X_train.rechunk((2000,X_train.shape[1])) # Rechunk along one dimension
-        U_X_train, S_X_train, Vh_X_train = da.linalg.svd(X_train[:,0:100])
-        X_PI = da.matmul(da.transpose(Vh_X_train),da.matmul(da.diag(da.reciprocal(S_X_train)),da.transpose(U_X_train)))
+    #     # compute approximate pseudoinverse of data matrix using SVD
+    #     # X_train = X_train.rechunk((2000,X_train.shape[1])) # Rechunk along one dimension
+    #     U_X_train, S_X_train, Vh_X_train = da.linalg.svd(X_train[:,0:250])
+    #     X_PI = da.matmul(da.transpose(Vh_X_train),da.matmul(da.diag(da.reciprocal(S_X_train)),da.transpose(U_X_train)))
 
-        print("got here 8")
+    #     print("got here 8")
 
-        # # X_PI = np.linalg.pinv(X_train[:,0:10])
-        C_dmdc = ys@X_PI
-        C_dmdc = C_dmdc@U_hat
-        print("got here 9")
-        # Execute computations for dmdc system matrices
-        print("Computing DMDc system matrices for n_ROM = ", n_ROM)
-        A_dmdc, B_dmdc, C_dmdc,U_hat = da.compute(A_dmdc, B_dmdc, C_dmdc,U_hat)
-        # A_dmdc, B_dmdc = da.compute(A_dmdc, B_dmdc)
-        # A_dmdc = A_dmdc.compute()
-        print("got here 10")
-        # B_dmdc = B_dmdc.compute()
-        # print("got here 11")
-        # C_dmdc = C_dmdc.compute()
-        # print("got here 12")
-        # U_hat = U_hat.compute()
-        # print("got here 13")
-        basis_dmdc = U_hat[:,0:n_ROM]
+    #     # # X_PI = np.linalg.pinv(X_train[:,0:10])
+    #     C_dmdc = ys@X_PI
+    #     C_dmdc = C_dmdc@U_hat
+
+    #     print("got here 9")
+    #     # Execute computations for dmdc system matrices
+    #     print("Computing DMDc system matrices for n_ROM = ", n_ROM)
+    #     A_dmdc, B_dmdc, C_dmdc,U_hat = da.compute(A_dmdc, B_dmdc, C_dmdc,U_hat)
+    #     # A_dmdc, B_dmdc = da.compute(A_dmdc, B_dmdc)
+    #     # A_dmdc = A_dmdc.compute()
+    #     print("got here 10")
+    #     # B_dmdc = B_dmdc.compute()
+    #     # print("got here 11")
+    #     # C_dmdc = C_dmdc.compute()
+    #     # print("got here 12")
+    #     # U_hat = U_hat.compute()
+    #     # print("got here 13")
+    #     basis_dmdc = U_hat[:,0:n_ROM]
+    #     # Save system matrices, projection mappings, and initial offset into file for later use
+    #     np.savez(romDir+f"dmdcSystemMatrices_{n_ROM}dim_{n_train}train.npz", A_dmdc=A_dmdc, B_dmdc=B_dmdc, C_dmdc=C_dmdc, x0=x0, y0=y0, basis_dmdc=basis_dmdc)
+    #     # save as .mat file
+    #     scipy.io.savemat(romDir+f"dmdcSystemMatrices_{n_ROM}dim_{n_train}train.mat", mdict={'A_dmdc': A_dmdc, 'B_dmdc': B_dmdc, 'C_dmdc': C_dmdc, 'x0': x0, 'y0': y0, 'basis_dmdc': basis_dmdc})
+    # print("Done generating DMDc ROMs.")
+
+    ####### Generate LOpInf ROMs From Given Operators #######
+    print("Generating LOpInf ROMs...")
+    # Read in .mat file for LOpInf ROM
+    lOpInfMats = scipy.io.loadmat(romDir + "lopinf_rom_operators_shifted.mat")
+    lOpInfbases = scipy.io.loadmat(romDir+'lopinf_shifted_basis_nkt_3.mat')
+    nROMs_LOpInf = np.array([2,4,6,8,10]) # Dimensions of original LOpInf models
+    U_fom = U_fom.compute()
+    for i in range(len(nROMs_LOpInf)):
+        n_ROM = nROMs_LOpInf[i]*2 # dimension of first-order linear ROM
+        # Grab matrices from .mat file
+        Bhat_lopinf = lOpInfMats['ROM_B'][0,i]
+        Chat_lopinf = lOpInfMats['ROM_C'][0,i]
+        Khat_lopinf = lOpInfMats['ROM_K'][0,i]
+        Mhat_lopinf = lOpInfMats['ROM_M'][0,i]
+        basis_lopinf = np.hstack((lOpInfbases['V'][:,:n_ROM//2],np.zeros((lOpInfbases['V'][:,:n_ROM//2].shape[0],n_ROM//2))))
+
+        # Form continuous time linear state transition matrices for LOpInf ROM
+        A_lopinf_ct = np.block([
+            [np.zeros((n_ROM//2,n_ROM//2)),np.eye(n_ROM//2)],
+            [-Khat_lopinf, -Chat_lopinf]
+        ])
+        B_lopinf_ct = np.block([
+            [np.zeros((n_ROM//2,l))],
+            [Bhat_lopinf]
+        ])
+        # Convert continuous time operators to discrete time operators
+        A_lopinf_dt = scipy.linalg.expm(A_lopinf_ct*dt)
+        B_lopinf_dt = (A_lopinf_dt-np.eye(n_ROM))@np.linalg.inv(A_lopinf_ct)@B_lopinf_ct
+
+        # Initialize matrices to hold states so that we can compute the output matrices
+        X_lopinf = np.zeros((n_ROM,n_timesteps,n_train))
+        # Simulate the LOpInf ROM for each episode
+        for j in range(n_train):
+            for k in range(n_timesteps):
+                X_lopinf[:,k,j] = A_lopinf_dt@X_lopinf[:,k-1,j] + B_lopinf_dt@U_fom[:,k,j]
+        # Compute the output matrices for the LOpInf ROM by projecting outputs onto states
+        C_lopinf_ct = Y_fom[:,:,0].compute()@np.linalg.pinv(X_lopinf[:,:,0])
+        # C_lopinf_ct = np.block([
+        #     [Ehat_lopinf, np.zeros((m,n_ROM//2))]
+        # ])
+        D_lopinf_ct = np.zeros((m,l))
+
+        C_lopinf_dt = C_lopinf_ct
+        D_lopinf_dt = D_lopinf_ct
         # Save system matrices, projection mappings, and initial offset into file for later use
-        np.savez(romDir+f"dmdcSystemMatrices_{n_ROM}dim_{n_train}train.npz", A_dmdc=A_dmdc, B_dmdc=B_dmdc, C_dmdc=C_dmdc, x0=x0, y0=y0, basis_dmdc=basis_dmdc)
+        np.savez(romDir+f"lopinfSystemMatrices_{n_ROM}dim_{n_train}train.npz", A_lopinf=A_lopinf_dt, B_lopinf=B_lopinf_dt, C_lopinf=C_lopinf_dt, D_lopinf=D_lopinf_dt, x0=x0, y0=y0, basis_lopinf=basis_lopinf)
         # save as .mat file
-        scipy.io.savemat(romDir+f"dmdcSystemMatrices_{n_ROM}dim_{n_train}train.mat", mdict={'A_dmdc': A_dmdc, 'B_dmdc': B_dmdc, 'C_dmdc': C_dmdc, 'x0': x0, 'y0': y0, 'basis_dmdc': basis_dmdc})
+        scipy.io.savemat(romDir+f"lopinfSystemMatrices_{n_ROM}dim_{n_train}train.mat", mdict={'A_lopinf': A_lopinf_dt, 'B_lopinf': B_lopinf_dt, 'C_lopinf': C_lopinf_dt, 'D_lopinf': D_lopinf_dt, 'x0': x0, 'y0': y0, 'basis_lopinf': basis_lopinf})
 
-    print("Done generating DMDc ROMs.")
