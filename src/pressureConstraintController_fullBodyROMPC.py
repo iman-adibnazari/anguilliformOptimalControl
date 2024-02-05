@@ -23,13 +23,13 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
         self.step_id = 0 
         self.length = 1114.1947932504659 # mm
-        self.T = 160 # prediction horizon
+        self.T = 1200 # prediction horizon
         self.deltaT = deltaT
         self.chambers = chambers
         self.saveOutput=saveOutput
         self.segments = segments
-        self.rhcPolicy =  rhcPolicy_LOpInf(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_LOpInf(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.rhcPolicy =  rhcPolicy_LOpInf(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/lopinfSystemMatricesAndGains_20dim_3train.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_LOpInf(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/lopinfSystemMatricesAndGains_20dim_3train.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
@@ -46,7 +46,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
     # helper function to define reference trajectories
     # Function to provide coordinates of discretized centerline at a given time
-    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=10,omega=3,x_shift = 0,z_shift = 0):
+    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=3,x_shift = 0,z_shift = 0):
         # Generate 10 times number of x coordinates as desired points
         x = np.linspace(0,l,numPoints*1000)
         dx = x[1]-x[0]
@@ -77,7 +77,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         return y_ref
     
     # Helper function to define reference trajectories using reference coords function above
-    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=10,omega=7,x_shift = 0,z_shift = 0, T=1,  *args, **kwargs):
+    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=7,x_shift = 0,z_shift = 0, T=1, dt = 0.001, *args, **kwargs):
         '''
         T - time horizon of reference trajectory
         '''
@@ -86,7 +86,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         # Loop over time horizon
         for i in range(T):
             # Generate reference coordinates
-            y_ref[:,i] = self.generateReferenceCoords(time = time+i,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
+            y_ref[:,i] = self.generateReferenceCoords(time = time+i*dt,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
         return y_ref
 
     def onAnimateBeginEvent(self, e):
@@ -160,7 +160,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ######### solve ROM MPC optimization for control input #########
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=15, omega = 120, k=15) 
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=5, omega = 35, k=10, dt = 0.001) 
         # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
 

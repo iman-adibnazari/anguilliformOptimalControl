@@ -54,7 +54,7 @@ class rhcPolicy_LOpInf():
         self.x_hat = np.zeros((self.A.shape[0],1))
         # Initialize optimization problem for rhc using ROM state as initial condition
         # simulation and optimization parameters
-        self.n = 22 # number of states
+        self.n = self.A.shape[0] # number of states
         self.m = 6 # number of inputs
         self.p = 40 # number of outputs
         self.T = T # prediction horizon
@@ -62,7 +62,7 @@ class rhcPolicy_LOpInf():
         self.R = np.eye(self.m) # input cost matrix
         self.P = np.eye(self.n) # terminal state cost matrix
         # Formulate optimization problem
-        n = 22 # number of states
+        n = self.A.shape[0] # number of states
         m = 6 # number of inputs
         p = 40 # number of outputs
         # T = 50 # prediction horizon
@@ -78,7 +78,7 @@ class rhcPolicy_LOpInf():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
-        self.u_max = 0.15
+        self.u_max = 0.01
         # Costs and constraints
         cost = 0
         constr = []
@@ -96,15 +96,15 @@ class rhcPolicy_LOpInf():
             # # Only apply cost for odd output indices to penalize the z trajectory error
             # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
             # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
-            cost += 0.0006*cp.sum_squares(self.y[1:15:2,t+1]-self.y_ref[1:15:2,t+1])
+            cost += 0.0003*cp.sum_squares(self.y[5:15:2,t+1]-self.y_ref[5:15:2,t+1])
 
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 50*cp.sum_squares(self.du[:, t])
-            cost += 200*cp.sum_squares(self.u[:, t+1])
+            cost+= 1600*cp.sum_squares(self.du[:, t])
+            cost += 1500*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
@@ -128,7 +128,7 @@ class rhcPolicy_LOpInf():
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='SCS', verbose=True)
+        self.rhcOpt.solve(solver='GUROBI', verbose=True)
         end = time.time()
         # get first control input
         controlInput = self.u.value[:,1]

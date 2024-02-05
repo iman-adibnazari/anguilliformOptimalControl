@@ -26,7 +26,7 @@ class stateEstimator_LOpInf():
         self.x_hat = np.zeros((self.A.shape[0],1))
         self.y_hat = np.zeros((self.C.shape[0],1))
         # simulation and optimization parameters
-        self.n = 22 # number of states
+        self.n = self.A.shape[0] # number of states
         self.m = 6 # number of inputs
         self.p = 40 # number of outputs
         if self.logResults:
