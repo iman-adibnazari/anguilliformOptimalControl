@@ -48,12 +48,13 @@ class rhcPolicy_DMDc():
         self.A = systemMats['A_dmdc']
         self.B = systemMats['B_dmdc']
         self.C = systemMats['C_dmdc']
+        # self.D = systemMats['D_dmdc']
         self.L = systemMats['L_dmdc']
         # Initialize ROM state estimate
         self.x_hat = np.zeros((self.A.shape[0],1))
         # Initialize optimization problem for rhc using ROM state as initial condition
         # simulation and optimization parameters
-        self.n = 22 # number of states
+        self.n = self.A.shape[0] # number of states
         self.m = 6 # number of inputs
         self.p = 40 # number of outputs
         self.T = T # prediction horizon
@@ -61,7 +62,7 @@ class rhcPolicy_DMDc():
         self.R = np.eye(self.m) # input cost matrix
         self.P = np.eye(self.n) # terminal state cost matrix
         # Formulate optimization problem
-        n = 22 # number of states
+        n = self.A.shape[0] # number of states
         m = 6 # number of inputs
         p = 40 # number of outputs
         # T = 50 # prediction horizon
@@ -77,32 +78,41 @@ class rhcPolicy_DMDc():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
-        self.u_max = 0.15
+        self.u_max = 0.008
         # Costs and constraints
         cost = 0
         constr = []
         constr+= [self.x[:, 0] == self.x0]
         constr+= [self.u[:, 0] == self.u0]
-        constr+= [self.y[:, 0] == self.C @ self.x[:, 0]]
+        constr+= [self.y[:, 0] == self.C @ self.x[:, 0]] #+ self.D @ self.u[:, 0]]
 
         for t in range(T):
             # Apply cost for output trajectory
-            cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
+            
+            # Penalize all outputs
+            # cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
 
             
             # # Only apply cost for odd output indices to penalize the z trajectory error
-            # cost_era += cp.sum_squares(y_era[1::2,t+1]-y_ref[1::2,t+1])
+            # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
+            # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
+            cost += 0.00035*cp.sum_squares(self.y[7:17:2,t+1]-self.y_ref[7:17:2,t+1])
+
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= cp.sum_squares(self.du[:, t])
+            cost+= 1700*cp.sum_squares(self.du[:, t])
+            cost += 1600*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
-            constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
+            constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1]] #+ self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
-            # Probably need to either add a more significant penalty to du or add a constraint to limit change in input
 
+            # Apply antagonistic control constraint
+            constr += [self.u[0,t+1]==-self.u[1,t+1]]
+            constr += [self.u[2,t+1]==-self.u[3,t+1]]
+            constr += [self.u[4,t+1]==-self.u[5,t+1]]
 
             # constraints to limit change in input
             # if t > 0:
@@ -118,7 +128,7 @@ class rhcPolicy_DMDc():
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='SCS', verbose=True)
+        self.rhcOpt.solve(solver='GUROBI', verbose=True)
         end = time.time()
         # get first control input
         controlInput = self.u.value[:,1]

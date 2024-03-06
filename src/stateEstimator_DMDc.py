@@ -8,7 +8,7 @@ import cvxpy as cp
 import logging 
 
 
-class stateEstimator_ERA(): 
+class stateEstimator_DMDc(): 
     def __init__(self,dt,logResults = False, logfile ='./stateEstimatorLog.log', *args, **kwargs):
         self.time = 0 # current time
         self.dt = dt # time step
@@ -16,11 +16,11 @@ class stateEstimator_ERA():
         # Read in system matrices and offset vectors
         systemMatFile = kwargs.get("systemMatFile")
         systemMats = scipy.io.loadmat(systemMatFile)
-        self.A = systemMats['A_era']
-        self.B = systemMats['B_era']
-        self.C = systemMats['C_era']
-        self.D = systemMats['D_era']
-        self.L = systemMats['L_era']
+        self.A = systemMats['A_dmdc']
+        self.B = systemMats['B_dmdc']
+        self.C = systemMats['C_dmdc']
+        # self.D = systemMats['D_dmdc']
+        self.L = systemMats['L_dmdc']
         # Initialize observer estimates
         self.u = np.zeros((self.B.shape[1],1))
         self.x_hat = np.zeros((self.A.shape[0],1))
@@ -40,7 +40,7 @@ class stateEstimator_ERA():
         # Update state estimate
         self.u = np.reshape(u,(self.m,1))
         self.x_hat = self.A @ self.x_hat + self.B @ self.u - self.L @ (self.y_hat-y)
-        self.y_hat = self.C @ self.x_hat + self.D @ self.u
+        self.y_hat = self.C @ self.x_hat
         if self.logResults:
             logging.info('u: {}'.format(self.u.squeeze()))
             logging.info('x_hat: {}'.format(self.x_hat.squeeze()))

@@ -48,7 +48,7 @@ class rhcPolicy_LOpInf():
         self.A = systemMats['A_lopinf']
         self.B = systemMats['B_lopinf']
         self.C = systemMats['C_lopinf']
-        self.D = systemMats['D_lopinf']
+        # self.D = systemMats['D_dmdc']
         self.L = systemMats['L_lopinf']
         # Initialize ROM state estimate
         self.x_hat = np.zeros((self.A.shape[0],1))
@@ -78,13 +78,13 @@ class rhcPolicy_LOpInf():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
-        self.u_max = 0.01
+        self.u_max = 0.008
         # Costs and constraints
         cost = 0
         constr = []
         constr+= [self.x[:, 0] == self.x0]
         constr+= [self.u[:, 0] == self.u0]
-        constr+= [self.y[:, 0] == self.C @ self.x[:, 0] + self.D @ self.u[:, 0]]
+        constr+= [self.y[:, 0] == self.C @ self.x[:, 0]] #+ self.D @ self.u[:, 0]]
 
         for t in range(T):
             # Apply cost for output trajectory
@@ -96,17 +96,17 @@ class rhcPolicy_LOpInf():
             # # Only apply cost for odd output indices to penalize the z trajectory error
             # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
             # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
-            cost += 0.0003*cp.sum_squares(self.y[5:15:2,t+1]-self.y_ref[5:15:2,t+1])
+            cost += 0.00035*cp.sum_squares(self.y[7:17:2,t+1]-self.y_ref[7:17:2,t+1])
 
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 1600*cp.sum_squares(self.du[:, t])
-            cost += 1500*cp.sum_squares(self.u[:, t+1])
+            cost+= 1700*cp.sum_squares(self.du[:, t])
+            cost += 1600*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
-            constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
+            constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1]] #+ self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
 
             # Apply antagonistic control constraint

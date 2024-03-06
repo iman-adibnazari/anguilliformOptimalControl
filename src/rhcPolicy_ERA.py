@@ -54,7 +54,7 @@ class rhcPolicy_ERA():
         self.x_hat = np.zeros((self.A.shape[0],1))
         # Initialize optimization problem for rhc using ROM state as initial condition
         # simulation and optimization parameters
-        self.n = 22 # number of states
+        self.n = self.A.shape[0] # number of states
         self.m = 6 # number of inputs
         self.p = 40 # number of outputs
         self.T = T # prediction horizon
@@ -62,7 +62,7 @@ class rhcPolicy_ERA():
         self.R = np.eye(self.m) # input cost matrix
         self.P = np.eye(self.n) # terminal state cost matrix
         # Formulate optimization problem
-        n = 22 # number of states
+        n = self.A.shape[0] # number of states
         m = 6 # number of inputs
         p = 40 # number of outputs
         # T = 50 # prediction horizon
@@ -78,7 +78,7 @@ class rhcPolicy_ERA():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
-        self.u_max = 0.15
+        self.u_max = 0.008
         # Costs and constraints
         cost = 0
         constr = []
@@ -88,23 +88,31 @@ class rhcPolicy_ERA():
 
         for t in range(T):
             # Apply cost for output trajectory
-            cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
+            
+            # Penalize all outputs
+            # cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
 
             
             # # Only apply cost for odd output indices to penalize the z trajectory error
-            # cost_era += cp.sum_squares(y_era[1::2,t+1]-y_ref[1::2,t+1])
+            # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
+            # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
+            cost += 0.00035*cp.sum_squares(self.y[7:17:2,t+1]-self.y_ref[7:17:2,t+1])
+
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 10*cp.sum_squares(self.du[:, t])
-            cost += 250*cp.sum_squares(self.u[:, t+1])
+            cost+= 1700*cp.sum_squares(self.du[:, t])
+            cost += 1600*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
-            # Probably need to either add a more significant penalty to du or add a constraint to limit change in input
 
+            # Apply antagonistic control constraint
+            constr += [self.u[0,t+1]==-self.u[1,t+1]]
+            constr += [self.u[2,t+1]==-self.u[3,t+1]]
+            constr += [self.u[4,t+1]==-self.u[5,t+1]]
 
             # constraints to limit change in input
             # if t > 0:
@@ -114,21 +122,13 @@ class rhcPolicy_ERA():
 
 
     def getAction(self,x0, y_ref,u0):
-        # TODO: Context - For some reason this is returning pressure values really close to 0 for the first few iterations. I
-        # will leave it to run over the weekend.
-        # Things to check when I get back. 
-        # 1) Make some dummy variables that look at the computed state and output trajectories to see if theyre actually changing to the 
-        # reference trajectory.
-        # 2) Double check the reference trajectory is being computed and passed in correctly
-        
-
         # set initial conditions for optimization
         self.x0.value = x0.squeeze()
         self.u0.value = u0.squeeze() # use previous control input as initial condition
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='SCS', verbose=True)
+        self.rhcOpt.solve(solver='GUROBI', verbose=True)
         end = time.time()
         # get first control input
         controlInput = self.u.value[:,1]
