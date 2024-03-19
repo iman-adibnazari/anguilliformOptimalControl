@@ -1,6 +1,6 @@
 # anguilliformOptimalControl
 ## SETUP
-1. Download newest version of sofa
+1. Download SOFA v22.12.00 
 2. Ensure sofapython3 plugin is active
 3. Setup sofapython3 to run from within python interpretter (https://sofapython3.readthedocs.io/en/latest/menu/SofaPlugin.html#within-a-python3-interpreter)
 4. ensure that your execution environment defines SOFA_ROOT and PYTHONPATH correctly. This can be done on Ubuntu by adding the following to your .bashrc file
