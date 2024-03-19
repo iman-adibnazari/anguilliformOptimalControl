@@ -93,10 +93,10 @@ class rhcPolicy_LOpInf():
             # cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
 
             
-            # # Only apply cost for odd output indices to penalize the z trajectory error
+            # Only apply cost for odd output indices to penalize the z trajectory error
             # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
             # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
-            cost += 0.00035*cp.sum_squares(self.y[7:17:2,t+1]-self.y_ref[7:17:2,t+1])
+            cost += 0.03*cp.sum_squares(self.y[15:23:2,t+1]-self.y_ref[15:23:2,t+1])
 
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])

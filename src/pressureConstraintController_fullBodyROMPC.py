@@ -31,8 +31,8 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.chambers = chambers
         self.saveOutput=saveOutput
         self.segments = segments
-        self.rhcPolicy =  rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/eraSystemMatricesAndGains_20dim_3train.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_ERA(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/eraSystemMatricesAndGains_20dim_3train.mat")
+        self.rhcPolicy =  rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/eraSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_ERA(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/eraSystemMatricesAndGains_4dim_3train.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
@@ -163,7 +163,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ######### solve ROM MPC optimization for control input #########
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=31.42, omega = 12.57, k=9.42, dt = 0.001)  #31.42 12.57
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=20, omega = 6.28, k=6.28, dt = 0.001)  #31.42 12.57
         # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
 
