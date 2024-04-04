@@ -19,7 +19,6 @@ config = dotenv_values(".env")
 USE_GUI = True
 dt=0.0001
 
-
 def createScene(rootNode):
     ##################################################
     # Setup scene                                    #
@@ -64,7 +63,7 @@ def createScene(rootNode):
     segment.addObject('BoxROI', name='boxROISubTopo', box=[0, -80, -1, 200, 80, 1], drawBoxes=False, strict=False) # Define box in which the material will be different
     segment.addObject('BoxROI', name='boxROI', box=[0, -80, -50, 10, 80, 50])
     segment.addObject('RestShapeSpringsForceField', points='@boxROI.indices', stiffness=1e12, angularStiffness=1e12) # spring-like boundary conditions
-    segment.addObject('LinearSolverConstraintCorrection', solverName='directSolver')
+    segment.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
     # set stiff layer
     modelSubTopo = segment.addChild('modelSubTopo')
     
