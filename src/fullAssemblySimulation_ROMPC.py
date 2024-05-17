@@ -96,7 +96,29 @@ def createScene(rootNode):
     rootNode.dt=dt
     rootNode.addObject('VisualStyle', displayFlags='showVisual showForceFields showBehavior')#   
     rootNode.addObject('RequiredPlugin',
-                    pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver')
+                    pluginName=['Sofa.Component.Mass',
+                    'Sofa.Component.Mapping',
+                    'Sofa.Component.StateContainer',
+                    'Sofa.GL.Component.Rendering3D',
+                    'Sofa.GL.Component.Shader',
+                    'Sofa.Component.Diffusion',
+                    'Sofa.Component.SolidMechanics.FEM.Elastic',
+                    'Sofa.Component.IO.Mesh',
+                    'Sofa.Component.Engine.Select',
+                    'Sofa.Component.Mapping.MappedMatrix', 
+                    'Sofa.Component.Constraint.Lagrangian.Model', 
+                    'Sofa.Component.Constraint.Lagrangian.Correction', 
+                    'Sofa.Component.Constraint.Lagrangian.Solver', 
+                    'Sofa.Component.AnimationLoop', 
+                    'Sofa.Component.Collision.Detection.Intersection', 
+                    'Sofa.Component.Collision.Response.Contact',
+                    'SoftRobots',
+                    'SofaPython3',
+                    'Sofa.Component.SolidMechanics.Spring',
+                    'Sofa.Component.ODESolver.Backward',
+                    'Sofa.Component.LinearSolver.Direct',
+                    'SofaCUDA'
+                    ])
 
     rootNode.findData('gravity').value = [0, 0, 0]
     rootNode.addObject('FreeMotionAnimationLoop')
@@ -136,22 +158,22 @@ def createScene(rootNode):
     ##################################################
     head = rootNode.addChild('head')
     head.addObject('MeshTopology', src='@../headLoader', name='headTopologyContainer')
-    head.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    head.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     head.addObject('EulerImplicit', name='odesolver')
-    head.addObject('SparseLDLSolver', name='directSolver')
+    head.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     head.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
 
-    head.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=headPoisson, youngModulus=headModulus)
+    head.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=headPoisson, youngModulus=headModulus)
     head.addObject('UniformMass', totalMass=headMass)
 
 
-    ##################################################
-    # head/visual                                #
-    ##################################################
-    headVisual = head.addChild("VisualModel")
+    # ##################################################
+    # # head/visual                                #
+    # ##################################################
+    # headVisual = head.addChild("VisualModel")
     
-    headVisual.addObject('OglModel', name='visualModel', src='@../../headVisualLoader', color=[0,0.42,0, 1], updateNormals=False)
-    headVisual.addObject('BarycentricMapping')
+    # headVisual.addObject('OglModel', name='visualModel', src='@../../headVisualLoader', color=[0,0.42,0, 1], updateNormals=False)
+    # headVisual.addObject('BarycentricMapping')
 
 
 
@@ -161,11 +183,11 @@ def createScene(rootNode):
     centerline_head = head.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
 
 
-    # ################################################## TODO
-    # # head/constraints                               #
-    # ##################################################
-    # segment0_linearConstraint= segment0.addObject('FixedConstraint', name='fixedConstraint', indices='2905 6')
-    head_planarConstraint= head.addObject('PartialFixedConstraint', name='planarConstraint', indices='7 3',fixedDirections='1 0 1')
+    # # ################################################## TODO
+    # # # head/constraints                               #
+    # # ##################################################
+    # # segment0_linearConstraint= segment0.addObject('FixedConstraint', name='fixedConstraint', indices='2905 6')
+    # head_planarConstraint= head.addObject('PartialFixedConstraint', name='planarConstraint', indices='7 3',fixedDirections='1 0 1')
 
 
 
@@ -174,22 +196,22 @@ def createScene(rootNode):
     ##################################################
     segment0 = rootNode.addChild('segment0')
     segment0.addObject('MeshTopology', src='@../segment0Loader', name='segment0TopologyContainer')
-    segment0.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    segment0.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     segment0.addObject('EulerImplicit', name='odesolver')
-    segment0.addObject('SparseLDLSolver', name='directSolver')
+    segment0.addObject('SparseLDLSolver',template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     segment0.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
 
-    segment0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+    segment0.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=segmentPoisson,
                      youngModulus=segmentModulus)
     segment0.addObject('UniformMass', totalMass=segmentMass)
     
-    ##################################################
-    # segment0/visual                                #
-    ##################################################
-    segment0Visual = segment0.addChild("VisualModel")
+    # ##################################################
+    # # segment0/visual                                #
+    # ##################################################
+    # segment0Visual = segment0.addChild("VisualModel")
     
-    segment0Visual.addObject('OglModel', name='visualModel', src='@../../segment0VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
-    segment0Visual.addObject('BarycentricMapping')
+    # segment0Visual.addObject('OglModel', name='visualModel', src='@../../segment0VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    # segment0Visual.addObject('BarycentricMapping')
 
     ##################################################
     # segment0/constraintLayer                       #
@@ -208,10 +230,10 @@ def createScene(rootNode):
     ################################################## 
     chamber0_0 = segment0.addChild('chamber0')
     chamber0_0.addObject('MeshTopology', src='@../../chamber0_0Loader', name='chamber0_0Mesh')
-    chamber0_0.addObject('MechanicalObject', name='chamber0_0')
-    chamber0_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber0_0.addObject('MechanicalObject', name='chamber0_0',template='Vec3d')
+    chamber0_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber0_0Mesh.triangles', valueType='pressure')
-    chamber0_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber0_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
 
 
     # chamber0_0.addObject(PressureConstraintController(dt,policy_c00,savePressureInputs,chamber0_0,name="chamber0_0Controller"))
@@ -221,10 +243,10 @@ def createScene(rootNode):
     ##################################################    
     chamber0_1 = segment0.addChild('chamber1')
     chamber0_1.addObject('MeshTopology', src='@../../chamber0_1Loader', name='chamber0_1Mesh')
-    chamber0_1.addObject('MechanicalObject', name='chamber0_1')
-    chamber0_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber0_1.addObject('MechanicalObject', name='chamber0_1',template='Vec3d')
+    chamber0_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber0_1Mesh.triangles', valueType='pressure')
-    chamber0_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber0_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
     
 
     # chamber0_1.addObject(PressureConstraintController(dt,policy_c01,savePressureInputs,chamber0_1,name="chamber0_1Controller"))
@@ -251,19 +273,19 @@ def createScene(rootNode):
     ##################################################
     segment1 = rootNode.addChild('segment1')
     segment1.addObject('MeshTopology', src='@../segment1Loader', name='segment1TopologyContainer')
-    segment1.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    segment1.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     segment1.addObject('EulerImplicit', name='odesolver')
-    segment1.addObject('SparseLDLSolver', name='directSolver')
+    segment1.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     segment1.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    segment1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+    segment1.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=segmentPoisson,
                      youngModulus=segmentModulus)
     segment1.addObject('UniformMass', totalMass=segmentMass)
-    ##################################################
-    # segment1/visual                                #
-    ##################################################
-    segment1Visual = segment1.addChild("VisualModel")
-    segment1Visual.addObject('OglModel', name='visualModel', src='@../../segment1VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
-    segment1Visual.addObject('BarycentricMapping')
+    # ##################################################
+    # # segment1/visual                                #
+    # ##################################################
+    # segment1Visual = segment1.addChild("VisualModel")
+    # segment1Visual.addObject('OglModel', name='visualModel', src='@../../segment1VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    # segment1Visual.addObject('BarycentricMapping')
 
 
     ##################################################
@@ -283,10 +305,10 @@ def createScene(rootNode):
     ##################################################
     chamber1_0 = segment1.addChild('chamber0')
     chamber1_0.addObject('MeshTopology', src='@../../chamber1_0Loader', name='chamber1_0Mesh')
-    chamber1_0.addObject('MechanicalObject', name='chamber1_0')
-    chamber1_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber1_0.addObject('MechanicalObject', name='chamber1_0',template='Vec3d')
+    chamber1_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber1_0Mesh.triangles', valueType='pressure')
-    chamber1_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber1_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False,template='Vec3d,Vec3d')
 
     # chamber1_0.addObject(PressureConstraintController(dt,policy_c10,savePressureInputs,chamber1_0,name="chamber1_0Controller"))
 
@@ -295,10 +317,10 @@ def createScene(rootNode):
     ##################################################
     chamber1_1 = segment1.addChild('chamber1')
     chamber1_1.addObject('MeshTopology', src='@../../chamber1_1Loader', name='chamber1_1Mesh')
-    chamber1_1.addObject('MechanicalObject', name='chamber1_1')
-    chamber1_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber1_1.addObject('MechanicalObject', name='chamber1_1',template='Vec3d')
+    chamber1_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber1_1Mesh.triangles', valueType='pressure')
-    chamber1_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber1_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
     # chamber1_1.addObject(PressureConstraintController(dt,policy_c11,savePressureInputs,chamber1_1,name="chamber1_1Controller"))
     
     ##################################################
@@ -321,19 +343,19 @@ def createScene(rootNode):
     ##################################################
     segment2 = rootNode.addChild('segment2')
     segment2.addObject('MeshTopology', src='@../segment2Loader', name='segment2TopologyContainer')
-    segment2.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    segment2.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     segment2.addObject('EulerImplicit', name='odesolver')
-    segment2.addObject('SparseLDLSolver', name='directSolver')
+    segment2.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     segment2.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    segment2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=segmentPoisson,
+    segment2.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=segmentPoisson,
                      youngModulus=segmentModulus)
     segment2.addObject('UniformMass', totalMass=segmentMass)
-    ##################################################
-    # segment2/visual                                #
-    ##################################################
-    segment2Visual = segment2.addChild("VisualModel")
-    segment2Visual.addObject('OglModel', name='visualModel', src='@../../segment2VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
-    segment2Visual.addObject('BarycentricMapping')
+    # ##################################################
+    # # segment2/visual                                #
+    # ##################################################
+    # segment2Visual = segment2.addChild("VisualModel")
+    # segment2Visual.addObject('OglModel', name='visualModel', src='@../../segment2VisualLoader', color=[0.56,0.56,0.56, 1], updateNormals=False)
+    # segment2Visual.addObject('BarycentricMapping')
 
     ##################################################
     # segment2/constraintLayer                       #
@@ -352,10 +374,10 @@ def createScene(rootNode):
     ##################################################
     chamber2_0 = segment2.addChild('chamber0')
     chamber2_0.addObject('MeshTopology', src='@../../chamber2_0Loader', name='chamber2_0Mesh')
-    chamber2_0.addObject('MechanicalObject', name='chamber2_0')
-    chamber2_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber2_0.addObject('MechanicalObject', name='chamber2_0',template='Vec3d')
+    chamber2_0.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber2_0Mesh.triangles', valueType='pressure')
-    chamber2_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber2_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
 
     # chamber2_0.addObject(PressureConstraintController(dt,policy_c20,savePressureInputs,chamber2_0,name="chamber2_0Controller"))
 
@@ -364,10 +386,10 @@ def createScene(rootNode):
     ##################################################
     chamber2_1 = segment2.addChild('chamber1')
     chamber2_1.addObject('MeshTopology', src='@../../chamber2_1Loader', name='chamber2_1Mesh')
-    chamber2_1.addObject('MechanicalObject', name='chamber2_1')
-    chamber2_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    chamber2_1.addObject('MechanicalObject', name='chamber2_1',template='Vec3d')
+    chamber2_1.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3d', value=1,
                      triangles='@chamber2_1Mesh.triangles', valueType='pressure')
-    chamber2_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
+    chamber2_1.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
     
     # chamber2_1.addObject(PressureConstraintController(dt,policy_c21,savePressureInputs,chamber2_1,name="chamber2_1Controller"))
     
@@ -391,20 +413,20 @@ def createScene(rootNode):
     ##################################################
     tail = rootNode.addChild('tail')
     tail.addObject('MeshTopology', src='@../tailLoader', name='tailTopologyContainer')
-    tail.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    tail.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     tail.addObject('EulerImplicit', name='odesolver')
-    tail.addObject('SparseLDLSolver', name='directSolver')
+    tail.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     tail.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    tail.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=tailPoisson,
+    tail.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=tailPoisson,
                         youngModulus=tailModulus)
     tail.addObject('UniformMass', totalMass=tailMass)
 
-    ##################################################
-    # tail/visual                                    #
-    ##################################################
-    tailVisual = tail.addChild("VisualModel")
-    tailVisual.addObject('OglModel', name='visualModel', src='@../../tailVisualLoader', color=[0.01,0,1, 1], updateNormals=False)
-    tailVisual.addObject('BarycentricMapping')
+    # ##################################################
+    # # tail/visual                                    #
+    # ##################################################
+    # tailVisual = tail.addChild("VisualModel")
+    # tailVisual.addObject('OglModel', name='visualModel', src='@../../tailVisualLoader', color=[0.01,0,1, 1], updateNormals=False)
+    # tailVisual.addObject('BarycentricMapping')
 
     ##################################################
     # tail/centerlineROI                             #
@@ -418,24 +440,24 @@ def createScene(rootNode):
     ##################################################
     couple0 = rootNode.addChild('couple0')
     couple0.addObject('MeshTopology', src='@../couple0Loader', name='couple0TopologyContainer')
-    couple0.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    couple0.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
 
     couple0.addObject('EulerImplicit', name='odesolver')
-    couple0.addObject('SparseLDLSolver', name='directSolver')
+    couple0.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     couple0.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    couple0.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+    couple0.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=couplePoisson,
                      youngModulus=coupleModulus)
 
     couple0.addObject('UniformMass', totalMass=coupleMass)
 
 
-    ##################################################
-    # couple0/visual                                 #
-    ##################################################
-    couple0Visual = couple0.addChild("VisualModel")
+    # ##################################################
+    # # couple0/visual                                 #
+    # ##################################################
+    # couple0Visual = couple0.addChild("VisualModel")
 
-    couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
-    couple0Visual.addObject('BarycentricMapping')
+    # couple0Visual.addObject('OglModel', name='visualModel', src='@../../couple0Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    # couple0Visual.addObject('BarycentricMapping')
 
     ##################################################
     # couple0/couple0_segment0_attachmentROI         #
@@ -452,23 +474,23 @@ def createScene(rootNode):
     ##################################################
     couple1 = rootNode.addChild('couple1')
     couple1.addObject('MeshTopology', src='@../couple1Loader', name='couple1TopologyContainer')
-    couple1.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    couple1.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
 
     couple1.addObject('EulerImplicit', name='odesolver')
-    couple1.addObject('SparseLDLSolver', name='directSolver')
+    couple1.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     couple1.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    couple1.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+    couple1.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=couplePoisson,
                      youngModulus=coupleModulus)
 
     couple1.addObject('UniformMass', totalMass=coupleMass)
 
-    ##################################################
-    # couple1/visual                                 #
-    ##################################################
-    couple1Visual = couple1.addChild("VisualModel")
+    # ##################################################
+    # # couple1/visual                                 #
+    # ##################################################
+    # couple1Visual = couple1.addChild("VisualModel")
 
-    couple1Visual.addObject('OglModel', name='visualModel', src='@../../couple1Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
-    couple1Visual.addObject('BarycentricMapping')
+    # couple1Visual.addObject('OglModel', name='visualModel', src='@../../couple1Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    # couple1Visual.addObject('BarycentricMapping')
 
     ##################################################
     # couple1/couple1_segment1_attachmentROI         #
@@ -485,22 +507,22 @@ def createScene(rootNode):
     ##################################################
     couple2 = rootNode.addChild('couple2')
     couple2.addObject('MeshTopology', src='@../couple2Loader', name='couple2TopologyContainer')
-    couple2.addObject('MechanicalObject', name='state', template='Vec3', showObject=False, showObjectScale=1)
+    couple2.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
 
     couple2.addObject('EulerImplicit', name='odesolver')
-    couple2.addObject('SparseLDLSolver', name='directSolver')
+    couple2.addObject('SparseLDLSolver', template="CompressedRowSparseMatrixMat3x3d", name='directSolver')
     couple2.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
-    couple2.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=couplePoisson,
+    couple2.addObject('TetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=couplePoisson,
                         youngModulus=coupleModulus)
     
     couple2.addObject('UniformMass', totalMass=coupleMass)
-    ##################################################
-    # couple2/visual                                 #
-    ##################################################
-    couple2Visual = couple2.addChild("VisualModel")
+    # ##################################################
+    # # couple2/visual                                 #
+    # ##################################################
+    # couple2Visual = couple2.addChild("VisualModel")
 
-    couple2Visual.addObject('OglModel', name='visualModel', src='@../../couple2Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
-    couple2Visual.addObject('BarycentricMapping')
+    # couple2Visual.addObject('OglModel', name='visualModel', src='@../../couple2Loader', color=[0.15,0.15,0.15, 1], updateNormals=False)
+    # couple2Visual.addObject('BarycentricMapping')
 
 
 
@@ -591,9 +613,9 @@ def main():
     # Start logging
     logging.basicConfig(filename='testlog.log', level=logging.INFO)
     logging.info('Started')
-    # Make sure to load all SOFA libraries and plugins
-    SofaRuntime.importPlugin("SofaBaseMechanics")
-    SofaRuntime.importPlugin('SofaOpenglVisual')
+    # # Make sure to load all SOFA libraries and plugins
+    # SofaRuntime.importPlugin("SofaBaseMechanics")
+    # SofaRuntime.importPlugin('SofaOpenglVisual')
 
     # Generate the root node
     root = Sofa.Core.Node("root")

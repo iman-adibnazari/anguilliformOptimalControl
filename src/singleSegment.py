@@ -26,7 +26,7 @@ def createScene(rootNode):
     rootNode.dt=dt
     rootNode.addObject('VisualStyle', displayFlags='showVisual')# showForceFields showBehavior 
     rootNode.addObject('RequiredPlugin',
-                    pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver')
+                    pluginName='SoftRobots SofaPython3 SofaLoader SofaSimpleFem SofaEngine SofaDeformable SofaImplicitOdeSolver SofaConstraint SofaSparseSolver  SofaCUDA')
 
     rootNode.findData('gravity').value = [0, 0, 0]
     rootNode.addObject('FreeMotionAnimationLoop')
@@ -43,8 +43,8 @@ def createScene(rootNode):
 
     segment.addObject('MeshGmshLoader', name='loader', filename=config["currentDirectory"]+'meshes/singleSegment/Module_body3.msh')
     segment.addObject('MeshTopology', src='@loader', name='container')
-    segment.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
-    segment.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
+    segment.addObject('MechanicalObject', name='tetras', template='CudaVec3f', showObject=False, showObjectScale=1)
+    segment.addObject('TetrahedronFEMForceField', template='CudaVec3f', name='FEM', method='large', poissonRatio=0.3,
                      youngModulus=1000)
     segment.addObject('UniformMass', totalMass=0.0008)
 
@@ -71,20 +71,20 @@ def createScene(rootNode):
     modelSubTopo.addObject('MeshTopology', position='@loader.position', tetrahedra='@boxROISubTopo.tetrahedraInROI',
                            name='container')
     # Set material properties of stiff layer
-    modelSubTopo.addObject('TetrahedronFEMForceField', template='Vec3', name='FEM', method='large', poissonRatio=0.3,
+    modelSubTopo.addObject('TetrahedronFEMForceField', template='CudaVec3f', name='FEM', method='large', poissonRatio=0.3,
                            youngModulus=15000)
-    # modelSubTopo.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=True, showObjectScale=1)
+    # modelSubTopo.addObject('MechanicalObject', name='tetras', template='CudaVec3f', showObject=True, showObjectScale=1)
 
     # # Add mechanical object for tracking centerline state 
 
     ##################################################
     # segment/centerline                             #
     ################################################## 
-    centerline = segment.addObject('BoxROI', template="Vec3d", name="centerline_roi", box=[0, -80, -1, 200, 80, 1],drawBoxes=True)
+    centerline = segment.addObject('BoxROI', template="CudaVec3f", name="centerline_roi", box=[0, -80, -1, 200, 80, 1],drawBoxes=True)
     segment.addObject(centerlineStateExporter(filetype=0, name='centerlineExporter'))
 
     # centerlineROI = segment.addChild('centerlineROI')
-    # centerlineROI.addObject('MechanicalObject', name='tetras', template='Vec3', showObject=False, showObjectScale=1)
+    # centerlineROI.addObject('MechanicalObject', name='tetras', template='CudaVec3f', showObject=False, showObjectScale=1)
     # centerlineROI.addObject('MeshTopology', position='@loader.position', points='@boxROI.indices',
     #                        name='container')
     # centerlineROI.addObject(Exporter(filetype=0, name='centerlineExporter'))
@@ -96,7 +96,7 @@ def createScene(rootNode):
     cavity.addObject('MeshSTLLoader', name='cavityLoader', filename=config["currentDirectory"]+'/meshes/singleSegment/Module_cavity1.stl')
     cavity.addObject('MeshTopology', src='@cavityLoader', name='cavityMesh')
     cavity.addObject('MechanicalObject', name='cavity')
-    cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='Vec3', value=1,
+    cavity.addObject('SurfacePressureConstraint', name='SurfacePressureConstraint', template='CudaVec3f', value=1,
                      triangles='@cavityMesh.triangles', valueType='pressure')
     cavity.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False)
 

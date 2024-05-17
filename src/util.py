@@ -425,7 +425,7 @@ def combineDataSets(inFile1 = config["currentDirectory"] +"data/archivedDataSets
 
 if __name__ == '__main__':
     # cleanDataMultiEpisodes(numEpisodes=50)
-    cleanData(numTimeSteps=2450, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
+    cleanData(numTimeSteps=5100, outFilename="processedData_policySeed_0.npz",permuteCenterlineReduction=False)
     
     # cleanDataMultiEpisodes(numEpisodes=10,numTimeSteps=2000,permuteCenterlineReduction=False, )
     # generateDataSetFromProcessedNPZs(saveMatlab=True, savehdf5 = True)
