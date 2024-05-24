@@ -30,4 +30,6 @@ class centralizedPolicy_sinusoid():
         # update timestep
         self.time += self.dt
         print("time = "+self.time.__str__())
+        # Print pressures
+        print("Control Input = "+controlInput.__str__())
         return controlInput

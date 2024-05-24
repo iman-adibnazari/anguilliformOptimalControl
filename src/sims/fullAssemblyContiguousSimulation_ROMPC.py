@@ -170,17 +170,21 @@ def createScene(rootNode):
 
 
 
-    # ##################################################
-    # # head/centerlineROI                         #
-    # ##################################################    
-    # # centerline_head = head.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
+    ##################################################
+    # body/centerlineROI                         #
+    ##################################################    
+    centerline_body = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
 
 
-    # # ################################################## 
-    # # # head/constraints                               #
-    # # ##################################################
-    # # segment0_linearConstraint= segment0.addObject('FixedConstraint', name='fixedConstraint', indices='2905 6')
-    # head_planarConstraint= head.addObject('PartialFixedConstraint', name='planarConstraint', indices='7 3',fixedDirections='1 0 1')
+
+
+    ################################################## 
+    # body/constraints                               #
+    ##################################################
+    # # centerline_body = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
+    # # body_linearConstraint= body.addObject('FixedConstraint', name='fixedConstraint', indices='7 4')
+    # body_planarConstraint= body.addObject('PartialFixedConstraint', name='planarConstraint', indices='13204 14531',fixedDirections='1 0 1')
+    body.addObject('RestShapeSpringsForceField', points='@centerline_roi.indices', stiffness=1e14, angularStiffness=1e14) # spring-like boundary conditions
 
 
 
