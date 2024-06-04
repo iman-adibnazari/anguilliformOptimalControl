@@ -4,7 +4,9 @@ import Sofa.Simulation
 import numpy as np
 import SofaRuntime
 from fullStateRecorder import Exporter
+
 from pressureConstraintController_fullBodyROMPC import PressureConstraintController_fullBodyROMPC
+from pressureConstraintController_fullBodySysID import PressureConstraintController_fullBodySysID
 from pressureConstraintController import PressureConstraintController
 from centerlineStateRecorderMulti import centerlineStateExporterMulti
 from fullStateRecorderMulti import fullStateExporterMulti
@@ -15,16 +17,65 @@ from rhcPolicy_ERA import rhcPolicy_ERA
 import Sofa.Core
 from dotenv import dotenv_values  
 
-# Import policy 
-from randomPolicy import randomPolicy
-from brownianPolicy import brownianPolicy
-from sinusoidalPolicy import sinusoidalPolicy
-
 import logging
+import psycopg2
+from psycopg2.extras import execute_values
+import numpy as np
+import pickle
 
 config = dotenv_values(".env")
 
-# Choose in your script to activate or not the GUI
+
+# Helper functions for database connection and data writing
+def get_db_connection():
+    conn = psycopg2.connect(
+        dbname='simDB',
+        user='user',
+        password='password',
+        host='localhost',
+        port='5432'
+    )
+    return conn
+
+def setup_trial(conn, trial_name, description):
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO trial_metadata (trial_name, description) VALUES (%s, %s) RETURNING id',
+        (trial_name, description)
+    )
+    trial_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return trial_id
+
+
+def insert_simulation_data(conn, trial_id, timestep, simulation_time, input_data, output_data, state_data):
+    cur = conn.cursor()
+    
+    # Serialize NumPy arrays
+    input_data_bin = pickle.dumps(input_data)
+    output_data_bin = pickle.dumps(output_data)
+    state_data_bin = pickle.dumps(state_data)
+    
+    # Insert data into the database
+    cur.execute(
+        '''
+        INSERT INTO simulation_data 
+        (trial_id, timestep, simulation_time, input_data, output_data, state_data) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ''',
+        (trial_id, timestep, simulation_time, psycopg2.Binary(input_data_bin), psycopg2.Binary(output_data_bin), psycopg2.Binary(state_data_bin))
+    )
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+##################################################
+# Connect to Database                            #
+##################################################
 
 ##################################################
 # Simulation Parameters                          #
@@ -35,14 +86,12 @@ numSteps = 200
 dt=0.001
 attachPumps = False
 
-bodyMass = 0.727 #kg
-segmentMass = 2.14 #kg
-coupleMass = 0.266 #kg
-tailMass = 1.74 #kg
+bodyMass = 9.685 #kg
 bodyModulus = 2000 #kPa
 segmentModulus = 666.78 #kPa
-coupleModulus = 20000 #kPa
+coupleModulus = 400000 #kPa
 tailModulus = 125 #kPa
+fr4Modulus = 25000 #kPa
 
 segmentPoisson = 0.48
 couplePoisson = 0.35
@@ -59,36 +108,23 @@ recordCenterline = False
 recordInputs = False     
 savePressureInputs = 0
 
+
 ##################################################
-# Initialize control policies for each chamber   #
+# bounding box for centerline                    #
 ##################################################
-
-policy_c00 = brownianPolicy(dt=dt, seed = 2)
-policy_c01 = brownianPolicy(dt=dt, seed = 3)
-policy_c10 = brownianPolicy(dt=dt, seed = 4)
-policy_c11 = brownianPolicy(dt=dt, seed = 5)
-policy_c20 = brownianPolicy(dt=dt, seed = 6)
-policy_c21 = brownianPolicy(dt=dt, seed = 7)
-
-sinusoidalPolicy_c00 = sinusoidalPolicy(dt=dt, phase = 180, amplitude = 0.1, frequency = 8) 
-sinusoidalPolicy_c01 = sinusoidalPolicy(dt=dt, phase = 0, amplitude = 0.1, frequency = 8)
-sinusoidalPolicy_c10 = sinusoidalPolicy(dt=dt, phase = 0, amplitude = 0.01, frequency = 8)
-sinusoidalPolicy_c11 = sinusoidalPolicy(dt=dt, phase = 180, amplitude = 0.01, frequency = 8)
-sinusoidalPolicy_c20 = sinusoidalPolicy(dt=dt, phase = 180, amplitude = 0.01, frequency = 8)
-sinusoidalPolicy_c21 = sinusoidalPolicy(dt=dt, phase = 0, amplitude = 0.01, frequency = 8)
-
-# Define bounding box for centerline
-
 centerlineBounds = [-1200,-110, -3, 100, 110, 3] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
+leftHalfBounds = [-1200,-110, -300, 0, 110, -3] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
+rightHalfBounds = [-1200,-110, 3, 0, 110, 300] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
 
-# # Define bounding boxes for attachment points
-segment0_couple0_attachmentBounds = [-295, -186, 180, -185, -15, 186] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
-segment1_couple0_attachmentBounds = [-295, -186, 143, -185, -15, 149] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
-segment1_couple1_attachmentBounds = [-295, -186, -32, -185, -15, -26] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
-segment2_couple1_attachmentBounds = [-295, -186, -63, -185, -15, -69] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
+##################################################
+# bounding boxes for couples                    #
+##################################################
+couple0Bounds = [-354, -90, -50, -330, 90, 50] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
+couple1Bounds = [-568, -90, -50, -544, 90, 50] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
+couple2Bounds = [-781, -90, -50, -759, 90, 50] # [xmin, ymin, zmin, xmax, ymax, zmax] mm
 
 
-def createScene(rootNode):
+def createScene(rootNode, expParams):
     ##################################################
     # Setup scene                                    #
     ##################################################
@@ -104,6 +140,7 @@ def createScene(rootNode):
                     'Sofa.Component.SolidMechanics.FEM.Elastic',
                     'Sofa.Component.IO.Mesh',
                     'Sofa.Component.Engine.Select',
+                    'Sofa.Component.Engine.Transform',
                     'Sofa.Component.Mapping.MappedMatrix', 
                     'Sofa.Component.Constraint.Lagrangian.Model', 
                     'Sofa.Component.Constraint.Lagrangian.Correction', 
@@ -116,7 +153,7 @@ def createScene(rootNode):
                     'Sofa.Component.SolidMechanics.Spring',
                     'Sofa.Component.ODESolver.Backward',
                     'Sofa.Component.LinearSolver.Direct',
-                    'SofaCUDA',
+                    # 'SofaCUDA',
                     'Multithreading'
                     ])
 
@@ -136,14 +173,14 @@ def createScene(rootNode):
     rootNode.addObject('MeshSTLLoader', name='chamber1_1Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber1_1.stl')
     rootNode.addObject('MeshSTLLoader', name='chamber2_0Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber2_0.stl')
     rootNode.addObject('MeshSTLLoader', name='chamber2_1Loader', filename=config["currentDirectory"]+'/meshes/fullAssembly/chamber2_1.stl')
-    rootNode.addObject('MeshSTLLoader', name='headVisualLoader', filename=config["currentDirectory"]+'/meshes/fullAssembly/head.stl')
-    rootNode.addObject('MeshSTLLoader', name='segment0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment0.stl')
-    rootNode.addObject('MeshSTLLoader', name='segment1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment1.stl')
-    rootNode.addObject('MeshSTLLoader', name='segment2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment2.stl')
-    rootNode.addObject('MeshSTLLoader', name='tailVisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/tail.stl')
-    rootNode.addObject('MeshSTLLoader', name='couple0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple0_1.stl')
-    rootNode.addObject('MeshSTLLoader', name='couple1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple1_2.stl')
-    rootNode.addObject('MeshSTLLoader', name='couple2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple2_tail.stl')
+    # rootNode.addObject('MeshSTLLoader', name='headVisualLoader', filename=config["currentDirectory"]+'/meshes/fullAssembly/head.stl')
+    # rootNode.addObject('MeshSTLLoader', name='segment0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment0.stl')
+    # rootNode.addObject('MeshSTLLoader', name='segment1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment1.stl')
+    # rootNode.addObject('MeshSTLLoader', name='segment2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/segment2.stl')
+    # rootNode.addObject('MeshSTLLoader', name='tailVisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/tail.stl')
+    # rootNode.addObject('MeshSTLLoader', name='couple0VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple0_1.stl')
+    # rootNode.addObject('MeshSTLLoader', name='couple1VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple1_2.stl')
+    # rootNode.addObject('MeshSTLLoader', name='couple2VisualLoader', filename=config["currentDirectory"]+'meshes/fullAssembly/couple2_tail.stl')
 
 
     ##################################################
@@ -156,7 +193,24 @@ def createScene(rootNode):
     body.addObject('ParallelCGLinearSolver',template="ParallelCompressedRowSparseMatrixMat3x3d", name='directSolver', iterations=10, threshold=1e-15,tolerance=1e-5)
     body.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
 
-    body.addObject('ParallelTetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=bodyPoisson, youngModulus=bodyModulus)
+    # Regions with different stiffnesses
+    centerlineROI = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
+    leftHalfROI = body.addObject('BoxROI', template="Vec3d", name="leftHalf_roi", box= leftHalfBounds, drawBoxes=True)
+    rightHalfROI = body.addObject('BoxROI', template="Vec3d", name="rightHalf_roi", box= rightHalfBounds, drawBoxes=True)
+    couple0ROI = body.addObject('BoxROI', template="Vec3d", name="couple0_roi", box= couple0Bounds, drawBoxes=True)
+    couple1ROI = body.addObject('BoxROI', template="Vec3d", name="couple1_roi", box= couple1Bounds, drawBoxes=True)
+    couple2ROI = body.addObject('BoxROI', template="Vec3d", name="couple2_roi", box= couple2Bounds, drawBoxes=True)
+
+
+
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young1", indices="@centerline_roi.indices", value=fr4Modulus)
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young2", indices="@leftHalf_roi.indices", value=bodyModulus, inputValues = "@Young1.outputValues")
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young3", indices="@rightHalf_roi.indices", value=bodyModulus, inputValues = "@Young2.outputValues")
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young4", indices="@couple0_roi.indices", value=coupleModulus, inputValues = "@Young3.outputValues")
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young5", indices="@couple1_roi.indices", value=coupleModulus, inputValues = "@Young4.outputValues")
+    body.addObject('IndexValueMapper', template="Vec3d", name="Young6", indices="@couple2_roi.indices", value=coupleModulus, inputValues = "@Young5.outputValues")
+
+    body.addObject('ParallelTetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=bodyPoisson, youngModulus="@Young5.outputValues")
     body.addObject('UniformMass', totalMass=bodyMass)
 
 
@@ -173,8 +227,9 @@ def createScene(rootNode):
     ##################################################
     # body/centerlineROI                         #
     ##################################################    
-    centerline_body = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
-
+    # centerlineROI = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=True)
+    # leftHalfROI = body.addObject('BoxROI', template="Vec3d", name="leftHalf_roi", box= leftHalfBounds, drawBoxes=True)
+    # rightHalfROI = body.addObject('BoxROI', template="Vec3d", name="rightHalf_roi", box= rightHalfBounds, drawBoxes=True)
 
 
 
@@ -183,9 +238,10 @@ def createScene(rootNode):
     ##################################################
     # # centerline_body = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
     # # body_linearConstraint= body.addObject('FixedConstraint', name='fixedConstraint', indices='7 4')
-    # body_planarConstraint= body.addObject('PartialFixedConstraint', name='planarConstraint', indices='13204 14531',fixedDirections='1 0 1')
-    body.addObject('RestShapeSpringsForceField', points='@centerline_roi.indices', stiffness=1e14, angularStiffness=1e14) # spring-like boundary conditions
-
+    body_planarConstraint= body.addObject('PartialFixedConstraint', name='planarConstraint', indices='4 7 18 12',fixedDirections='1 0 1')
+    
+    body.addObject('RestShapeSpringsForceField', points= '4 7 18 12', stiffness=1e10, angularStiffness=100) # spring-like boundary conditions
+# 13204 14531
 
 
     # # ##################################################
@@ -403,7 +459,7 @@ def createScene(rootNode):
     # ##################################################
     # # Attach pressure controller                     #
     # ##################################################
-    rootNode.addObject(PressureConstraintController_fullBodyROMPC(dt, chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],saveOutput = 0))
+    rootNode.addObject(PressureConstraintController_fullBodySysID(dt, chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],expParams=expParams, saveOutput = True))
 
     # ##################################################
     # # Set up data recording                          #
@@ -420,25 +476,34 @@ def createScene(rootNode):
 
 
 def main():
-    # Start logging
-    logging.basicConfig(filename='testlog.log', level=logging.INFO)
-    logging.info('Started')
-    # # Make sure to load all SOFA libraries and plugins
-    # SofaRuntime.importPlugin("SofaBaseMechanics")
-    # SofaRuntime.importPlugin('SofaOpenglVisual')
-
     # Generate the root node
     root = Sofa.Core.Node("root")
 
     # Call the above function to create the scene graph
-    createScene(root)
+# TODO: Fix the expParams and have sim iterate through all of them
+# TODO: add to pressure constraint controller to save data in database
+# TODO: Do a trial run
+    # Connect to the database
+    conn = get_db_connection()
+
+    # Save Trial MetaData in Database
+    trial_name = "Trial A"
+    description = "Testing if data logs correctly in database. Amplitudes = [0.004, 0.002, 0], Frequencies = [0.1, 0.1, 0.1], Phases = [0, 120, 240]"
+    trial_id = setup_trial(conn, trial_name, description)
+    print(f"New trial created with ID: {trial_id}")
+    # Stuff experiment parameters and metadata into dictionary
+    expParams = {"amplitudes": [0.004, 0.002, 0], "frequencies": [0.1, 0.1, 0.1], "phases": [0, 120, 240], "trial_id": trial_id, "conn": conn}
+    createScene(root, expParams)
 
     # Once defined, initialization of the scene graph
     Sofa.Simulation.init(root)
 
+
+
+
     if not USE_GUI:
         for iteration in range(numSteps):
-            logging("Iteration: " + str(iteration))
+            # logging("Iteration: " + str(iteration))
             Sofa.Simulation.animate(root, root.dt.value)
             print(iteration)
     else:

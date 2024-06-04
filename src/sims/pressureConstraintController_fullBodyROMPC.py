@@ -97,76 +97,76 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         t=self.step_id*self.deltaT # get current time step
         pressures = np.zeros(len(self.pressureConstraints))
 
-        # # get full centerline vector
-        # centerlinePts_full = np.empty((1,3))
-        # for ind,segment in enumerate(self.segments): 
+        # get full centerline vector
+        centerlinePts_full = np.empty((1,3))
+        for ind,segment in enumerate(self.segments): 
 
-        #     with segment.centerline_roi.indices.writeableArray() as indices:
+            with segment.centerline_roi.indices.writeableArray() as indices:
 
-        #         with segment.state.position.writeableArray() as wa:
-        #             temp = wa[indices,:]
-        #             if ind ==0:
-        #                 centerlinePts_full = temp 
-        #             else: 
-        #                 centerlinePts_full = np.concatenate((centerlinePts_full,temp))
-        # # Save centerline data for debugging
-        # filename = config["currentDirectory"]+"data/centerlineData/"+"debug" + "_step_" + self.step_id.__str__() + ".npy"
-        # np.save(filename,centerlinePts_full)
-        # ######### compute reduced output vector #########
-        # points = centerlinePts_full # centerline data
-        # centerline_t = points # make sure centerline is in the right shape
+                with segment.state.position.writeableArray() as wa:
+                    temp = wa[indices,:]
+                    if ind ==0:
+                        centerlinePts_full = temp 
+                    else: 
+                        centerlinePts_full = np.concatenate((centerlinePts_full,temp))
+        # Save centerline data for debugging
+        filename = config["currentDirectory"]+"data/centerlineData/"+"debug" + "_step_" + self.step_id.__str__() + ".npy"
+        np.save(filename,centerlinePts_full)
+        ######### compute reduced output vector #########
+        points = centerlinePts_full # centerline data
+        centerline_t = points # make sure centerline is in the right shape
 
-        # #### On the first timestep form selection matrix and offset vector for centerline reduction ####
-        # if self.step_id == 0:
-        #     # Grab points for first timestep and reshape
-        #     # Find bounds for centerline data
-        #     xmin = np.min(centerline_t[:,0])
-        #     xmax = np.max(centerline_t[:,0])
-        #     # compute average z value of centerline
-        #     zavg = 0 #np.mean(centerline_t[:,2])
-        #     # find distance between discretization points
-        #     dx = (xmax-xmin)/(self.n_redCenterline-1)
-        #     # initialize averaging matrix mapping from full centerline to reduced centerline
-        #     self.avgMatrix = np.zeros((self.n_redCenterline,centerline_t.shape[0]))
-        #     # loop over discretized points to find closest points in full centerline
-        #     for i in range(self.n_redCenterline):
-        #         # find n_redLocal closest points in full centerline closest to the discretized point in the x direction and the average z value
-        #         idx = np.argsort((centerline_t[:,0]-xmin-i*dx)**2+np.abs(centerline_t[:,2]-zavg)**2)[0:self.n_redLocal]
+        #### On the first timestep form selection matrix and offset vector for centerline reduction ####
+        if self.step_id == 0:
+            # Grab points for first timestep and reshape
+            # Find bounds for centerline data
+            xmin = np.min(centerline_t[:,0])
+            xmax = np.max(centerline_t[:,0])
+            # compute average z value of centerline
+            zavg = 0 #np.mean(centerline_t[:,2])
+            # find distance between discretization points
+            dx = (xmax-xmin)/(self.n_redCenterline-1)
+            # initialize averaging matrix mapping from full centerline to reduced centerline
+            self.avgMatrix = np.zeros((self.n_redCenterline,centerline_t.shape[0]))
+            # loop over discretized points to find closest points in full centerline
+            for i in range(self.n_redCenterline):
+                # find n_redLocal closest points in full centerline closest to the discretized point in the x direction and the average z value
+                idx = np.argsort((centerline_t[:,0]-xmin-i*dx)**2+np.abs(centerline_t[:,2]-zavg)**2)[0:self.n_redLocal]
     
-        #         # populate averaging matrix
-        #         self.avgMatrix[i,idx] = 1/self.n_redLocal
+                # populate averaging matrix
+                self.avgMatrix[i,idx] = 1/self.n_redLocal
 
-        # #### Compute reduced centerline ####
-        # # Grab all x points from centerline
-        # xMat = centerline_t[:,0]
-        # # Grab all z points from centerline
-        # zMat = centerline_t[:,2]
+        #### Compute reduced centerline ####
+        # Grab all x points from centerline
+        xMat = centerline_t[:,0]
+        # Grab all z points from centerline
+        zMat = centerline_t[:,2]
 
 
-        # # compute reduced centerline coordinates
-        # xRed = np.matmul(self.avgMatrix,xMat)
-        # zRed = np.matmul(self.avgMatrix,zMat)
+        # compute reduced centerline coordinates
+        xRed = np.matmul(self.avgMatrix,xMat)
+        zRed = np.matmul(self.avgMatrix,zMat)
 
-        # # form matrix that iterates between x and z coordinates - this is the reduced centerline representation we use!
-        # redCenterline = np.concatenate((xRed.reshape(-1,1),zRed.reshape(-1,1)),axis=1).flatten()
-        # print(redCenterline)
-        # # If first timestep then record centerline offset vector
-        # if self.step_id == 0:
-        #     self.redCenterlineOffset = redCenterline
-        # ######### Get observer state estimate using reduced centerline #########
-        # # Get current pressure input
-        # u0 = np.array([pressureConstraint.value[0] for pressureConstraint in self.pressureConstraints])
-        # # Get current centered output
-        # y = redCenterline - self.redCenterlineOffset
-        # # Get current state estimate
-        # x_hat = self.stateEstimator.updateState(u0,y)
+        # form matrix that iterates between x and z coordinates - this is the reduced centerline representation we use!
+        redCenterline = np.concatenate((xRed.reshape(-1,1),zRed.reshape(-1,1)),axis=1).flatten()
+        print(redCenterline)
+        # If first timestep then record centerline offset vector
+        if self.step_id == 0:
+            self.redCenterlineOffset = redCenterline
+        ######### Get observer state estimate using reduced centerline #########
+        # Get current pressure input
+        u0 = np.array([pressureConstraint.value[0] for pressureConstraint in self.pressureConstraints])
+        # Get current centered output
+        y = redCenterline - self.redCenterlineOffset
+        # Get current state estimate
+        x_hat = self.stateEstimator.updateState(u0,y)
 
-        # ######### solve ROM MPC optimization for control input #########
-        # # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
-        # # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        # y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=20, omega = 6.28, k=6.28, dt = 0.001)  #31.42 12.57
-        # # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
-        # pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
+        ######### solve ROM MPC optimization for control input #########
+        # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
+        # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=20, omega = 6.28, k=6.28, dt = 0.001)  #31.42 12.57
+        # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
+        pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
         pressures = self.rhcPolicy.getAction(0,0 ,pressures)
 
         # pressures = np.array([0.2,0,0.2,0,0.2,0])

@@ -12,13 +12,13 @@ import time
 # Function to provide coordinates of discretized centerline at a given time
 
 class centralizedPolicy_sinusoid(): 
-    def __init__(self,dt,T=50, *args, **kwargs):
+    def __init__(self,dt,T=50, amplitudes = np.array([0,0,0]),frequencies = np.array([0,0,0]), phases = np.array([0,0,0]), *args, **kwargs):
         self.dt = dt # time step
         self.time = 0 # current time
         self.length = 1114.1947932504659 # mm
-        self.amplitudes = np.array([0.0025,0.001,0.000]) # units of pressure
-        self.frequencies = np.array([0.5,0.5,0.5]) # Hz
-        self.phases = np.array([0,120,240]) # degrees
+        self.amplitudes = amplitudes # units of pressure
+        self.frequencies = frequencies # Hz
+        self.phases = phases # degrees
     def getAction(self,x0, y_ref,u0):
         # Compute control inputs as 6 phased sinusoids with every other element being negative the element before it
         controlInput = np.array([self.amplitudes[0]*np.sin(2*np.pi*self.frequencies[0]*self.time + self.phases[0] * np.pi/180),
@@ -30,6 +30,6 @@ class centralizedPolicy_sinusoid():
         # update timestep
         self.time += self.dt
         print("time = "+self.time.__str__())
-        # Print pressures
-        print("Control Input = "+controlInput.__str__())
+        # # Print pressures
+        # print("Control Input = "+controlInput.__str__())
         return controlInput
