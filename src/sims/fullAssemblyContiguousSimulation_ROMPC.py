@@ -81,9 +81,9 @@ def insert_simulation_data(conn, trial_id, timestep, simulation_time, input_data
 # Simulation Parameters                          #
 ##################################################
 
-USE_GUI = True
-numSteps = 200
-dt=0.001
+USE_GUI = False
+
+# dt=0.001
 attachPumps = False
 
 bodyMass = 9.685 #kg
@@ -128,7 +128,7 @@ def createScene(rootNode, expParams):
     ##################################################
     # Setup scene                                    #
     ##################################################
-    rootNode.dt=dt
+    rootNode.dt=expParams['dt']
     rootNode.addObject('VisualStyle', displayFlags='showVisual showForceFields showBehavior')#   
     rootNode.addObject('RequiredPlugin',
                     pluginName=['Sofa.Component.Mass',
@@ -459,7 +459,7 @@ def createScene(rootNode, expParams):
     # ##################################################
     # # Attach pressure controller                     #
     # ##################################################
-    rootNode.addObject(PressureConstraintController_fullBodySysID(dt, chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],expParams=expParams, saveOutput = True))
+    rootNode.addObject(PressureConstraintController_fullBodySysID(expParams['dt'], chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],expParams=expParams, saveOutput = True))
 
     # ##################################################
     # # Set up data recording                          #
@@ -476,49 +476,57 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    # Generate the root node
-    root = Sofa.Core.Node("root")
+    TimeHorizon = 5
+    speedups = [1, 2, 5, 10, 25, 50]
+    for speedup in speedups:
 
-    # Call the above function to create the scene graph
-# TODO: Fix the expParams and have sim iterate through all of them
-# TODO: add to pressure constraint controller to save data in database
-# TODO: Do a trial run
-    # Connect to the database
-    conn = get_db_connection()
+        # Generate the root node
+        root = Sofa.Core.Node("root")
+        # Call the above function to create the scene graph
+        # Connect to the database
+        conn = get_db_connection()
 
-    # Save Trial MetaData in Database
-    trial_name = "Trial A"
-    description = "Testing if data logs correctly in database. Amplitudes = [0.004, 0.002, 0], Frequencies = [0.1, 0.1, 0.1], Phases = [0, 120, 240]"
-    trial_id = setup_trial(conn, trial_name, description)
-    print(f"New trial created with ID: {trial_id}")
-    # Stuff experiment parameters and metadata into dictionary
-    expParams = {"amplitudes": [0.004, 0.002, 0], "frequencies": [0.1, 0.1, 0.1], "phases": [0, 120, 240], "trial_id": trial_id, "conn": conn}
-    createScene(root, expParams)
+        
+        dt = 0.001*speedup
+        numSteps = int(TimeHorizon/dt)
+        amplitudes = [0.004*speedup, 0.002*speedup, 0*speedup]
+        frequencies = [0.5, 0.5, 0.5]
+        phases = [0, 120, 240]
 
-    # Once defined, initialization of the scene graph
-    Sofa.Simulation.init(root)
+        # Save Trial MetaData in Database
+        trial_name = f"TimestepTest_Speedup{speedup}"
+        # put experimental parameters in description
+        description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
+        trial_id = setup_trial(conn, trial_name, description)
+        print(f"New trial created with ID: {trial_id}")
+        # Stuff experiment parameters and metadata into dictionary
+        expParams = {"dt": dt, "amplitudes": amplitudes, "frequencies": frequencies, "phases": phases, "trial_id": trial_id, "conn": conn}
+        createScene(root, expParams)
+
+        # Once defined, initialization of the scene graph
+        Sofa.Simulation.init(root)
 
 
 
 
-    if not USE_GUI:
-        for iteration in range(numSteps):
-            # logging("Iteration: " + str(iteration))
-            Sofa.Simulation.animate(root, root.dt.value)
-            print(iteration)
-    else:
-        # Find out the supported GUIs
-        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-        # Launch the GUI (qt or qglviewer)
-        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-        Sofa.Gui.GUIManager.createGUI(root, __file__)
-        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-        # Initialization of the scene will be done here
-        Sofa.Gui.GUIManager.MainLoop(root)
-        Sofa.Gui.GUIManager.closeGUI()
-        print("GUI was closed")
+        if not USE_GUI:
+            for iteration in range(numSteps):
+                # logging("Iteration: " + str(iteration))
+                Sofa.Simulation.animate(root, root.dt.value)
+                print(f"Speedup: {speedup}, Iteration: {iteration} out of {numSteps}")
+        else:
+            # Find out the supported GUIs
+            print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+            # Launch the GUI (qt or qglviewer)
+            Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+            Sofa.Gui.GUIManager.createGUI(root, __file__)
+            Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+            # Initialization of the scene will be done here
+            Sofa.Gui.GUIManager.MainLoop(root)
+            Sofa.Gui.GUIManager.closeGUI()
+            print("GUI was closed")
 
-    print("Simulation is done.")
+        print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':
