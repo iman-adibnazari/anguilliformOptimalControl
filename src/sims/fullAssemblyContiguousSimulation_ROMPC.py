@@ -80,12 +80,6 @@ def insert_simulation_data(conn, trial_id, timestep, simulation_time, input_data
 ##################################################
 # Simulation Parameters                          #
 ##################################################
-
-USE_GUI = False
-
-# dt=0.001
-attachPumps = False
-
 bodyMass = 9.685 #kg
 bodyModulus = 2000 #kPa
 segmentModulus = 666.78 #kPa
@@ -159,7 +153,7 @@ def createScene(rootNode, expParams):
 
     rootNode.findData('gravity').value = [0, 0, 0]
     rootNode.addObject('FreeMotionAnimationLoop')
-    rootNode.addObject('GenericConstraintSolver', tolerance=1e-12, maxIterations=10000)
+    rootNode.addObject('GenericConstraintSolver', maxIterations=500, tolerance=1e-4)
 
 
 
@@ -190,7 +184,7 @@ def createScene(rootNode, expParams):
     body.addObject('MeshTopology', src='@../bodyLoader', name='bodyTopologyContainer')
     body.addObject('MechanicalObject', name='state', template='Vec3d', showObject=False, showObjectScale=1)
     body.addObject('EulerImplicit', name='odesolver')
-    body.addObject('ParallelCGLinearSolver',template="ParallelCompressedRowSparseMatrixMat3x3d", name='directSolver', iterations=10, threshold=1e-15,tolerance=1e-5)
+    body.addObject('ParallelCGLinearSolver',template="ParallelCompressedRowSparseMatrixMat3x3d", name='directSolver', iterations=250, threshold=1e-4,tolerance=1e-4, warmStart=False)
     body.addObject('LinearSolverConstraintCorrection', linearSolver='@directSolver',ODESolver='@odesolver')
 
     # Regions with different stiffnesses
@@ -200,8 +194,6 @@ def createScene(rootNode, expParams):
     couple0ROI = body.addObject('BoxROI', template="Vec3d", name="couple0_roi", box= couple0Bounds, drawBoxes=True)
     couple1ROI = body.addObject('BoxROI', template="Vec3d", name="couple1_roi", box= couple1Bounds, drawBoxes=True)
     couple2ROI = body.addObject('BoxROI', template="Vec3d", name="couple2_roi", box= couple2Bounds, drawBoxes=True)
-
-
 
     body.addObject('IndexValueMapper', template="Vec3d", name="Young1", indices="@centerline_roi.indices", value=fr4Modulus)
     body.addObject('IndexValueMapper', template="Vec3d", name="Young2", indices="@leftHalf_roi.indices", value=bodyModulus, inputValues = "@Young1.outputValues")
@@ -476,8 +468,9 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    TimeHorizon = 5
-    speedups = [1, 2, 5, 10, 25, 50]
+    TimeHorizon = 0.5
+    speedups = [10] #1, 2, 5, 10
+    USE_GUI = True
     for speedup in speedups:
 
         # Generate the root node
@@ -489,14 +482,17 @@ def main():
         
         dt = 0.001*speedup
         numSteps = int(TimeHorizon/dt)
-        amplitudes = [0.004*speedup, 0.002*speedup, 0*speedup]
-        frequencies = [0.5, 0.5, 0.5]
-        phases = [0, 120, 240]
+        amplitudes = 2*[0.008*speedup, 0.008*speedup, 0.008*speedup]
+        frequencies = [0.25, 0.25, 0.25]
+        phases = [0, -120, -240]
 
         # Save Trial MetaData in Database
         trial_name = f"TimestepTest_Speedup{speedup}"
         # put experimental parameters in description
-        description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
+        if USE_GUI:
+            description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
+        else:
+            description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
         trial_id = setup_trial(conn, trial_name, description)
         print(f"New trial created with ID: {trial_id}")
         # Stuff experiment parameters and metadata into dictionary

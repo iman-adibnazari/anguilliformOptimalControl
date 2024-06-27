@@ -9,3 +9,12 @@
     export PYTHONPATH=~/PATH/TO/SOFA/INSTALLATION/DIRECTORY/plugins/SofaPython3/lib/python3/site-packages:$PYTHONPATH
     ```
 5. Change name of .env_example to .env and change contained environment variables accordingly
+
+
+
+
+
+
+
+## Notes 
+* Prior to running any simulations, need to make sure that the Docker container that runs the postgress DB is up and accessible to the simulation scripts
