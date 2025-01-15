@@ -25,6 +25,20 @@ import pickle
 
 config = dotenv_values(".env")
 
+lowAmp = 0.02
+highAmp = 0.08
+allAmplitudes = [
+                # [lowAmp,0,0],
+				# [0,lowAmp,0],
+				# [0,0,lowAmp],
+				# [lowAmp,lowAmp,lowAmp],
+				# [highAmp ,0,0],
+				# [0,highAmp,0],
+				[0,0,highAmp],
+				[highAmp,highAmp,highAmp],
+				]
+allFrequencies = [0.1,0.3,0.5,1,1.5]
+# allFrequencies = [1.5]
 
 # Helper functions for database connection and data writing
 def get_db_connection():
@@ -230,9 +244,9 @@ def createScene(rootNode, expParams):
     ##################################################
     # # centerline_body = body.addObject('BoxROI', template="Vec3d", name="centerline_roi", box= centerlineBounds, drawBoxes=False)
     # # body_linearConstraint= body.addObject('FixedConstraint', name='fixedConstraint', indices='7 4')
-    body_planarConstraint= body.addObject('PartialFixedConstraint', name='planarConstraint', indices='4 7 18 12',fixedDirections='1 0 1')
+    body_planarConstraint= body.addObject('PartialFixedConstraint', name='planarConstraint', indices='18 12',fixedDirections='0 0 0')
     
-    body.addObject('RestShapeSpringsForceField', points= '4 7 18 12', stiffness=1e10, angularStiffness=100) # spring-like boundary conditions
+    # body.addObject('RestShapeSpringsForceField', points= '18 12', stiffness=1e12, angularStiffness=100) # spring-like boundary conditions
 # 13204 14531
 
 
@@ -468,61 +482,63 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    TimeHorizon = 0.5
-    speedups = [10] #1, 2, 5, 10
-    USE_GUI = True
+    TimeHorizon = 10 # seconds
+    speedups = [1] #1, 2, 5, 10
+    USE_GUI = False
     for speedup in speedups:
+        for amplitudes in allAmplitudes:
+            for freq in allFrequencies:
 
-        # Generate the root node
-        root = Sofa.Core.Node("root")
-        # Call the above function to create the scene graph
-        # Connect to the database
-        conn = get_db_connection()
+                # Generate the root node
+                root = Sofa.Core.Node("root")
+                # Call the above function to create the scene graph
+                # Connect to the database
+                conn = get_db_connection()
 
-        
-        dt = 0.001*speedup
-        numSteps = int(TimeHorizon/dt)
-        amplitudes = 2*[0.008*speedup, 0.008*speedup, 0.008*speedup]
-        frequencies = [0.25, 0.25, 0.25]
-        phases = [0, -120, -240]
+                
+                dt = 0.01*speedup
+                numSteps = int(TimeHorizon/dt)
+                # amplitudes = 2*[0.008*speedup, 0.008*speedup, 0.008*speedup]
+                frequencies = [freq, freq, freq]
+                phases = [0, -120, -240]
 
-        # Save Trial MetaData in Database
-        trial_name = f"TimestepTest_Speedup{speedup}"
-        # put experimental parameters in description
-        if USE_GUI:
-            description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
-        else:
-            description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-        trial_id = setup_trial(conn, trial_name, description)
-        print(f"New trial created with ID: {trial_id}")
-        # Stuff experiment parameters and metadata into dictionary
-        expParams = {"dt": dt, "amplitudes": amplitudes, "frequencies": frequencies, "phases": phases, "trial_id": trial_id, "conn": conn}
-        createScene(root, expParams)
+                # Save Trial MetaData in Database
+                trial_name = f"TimestepTest_Speedup{speedup}"
+                # put experimental parameters in description
+                if USE_GUI:
+                    description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
+                else:
+                    description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+                trial_id = setup_trial(conn, trial_name, description)
+                print(f"New trial created with ID: {trial_id}")
+                # Stuff experiment parameters and metadata into dictionary
+                expParams = {"dt": dt, "amplitudes": amplitudes, "frequencies": frequencies, "phases": phases, "trial_id": trial_id, "conn": conn}
+                createScene(root, expParams)
 
-        # Once defined, initialization of the scene graph
-        Sofa.Simulation.init(root)
-
-
+                # Once defined, initialization of the scene graph
+                Sofa.Simulation.init(root)
 
 
-        if not USE_GUI:
-            for iteration in range(numSteps):
-                # logging("Iteration: " + str(iteration))
-                Sofa.Simulation.animate(root, root.dt.value)
-                print(f"Speedup: {speedup}, Iteration: {iteration} out of {numSteps}")
-        else:
-            # Find out the supported GUIs
-            print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-            # Launch the GUI (qt or qglviewer)
-            Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-            Sofa.Gui.GUIManager.createGUI(root, __file__)
-            Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-            # Initialization of the scene will be done here
-            Sofa.Gui.GUIManager.MainLoop(root)
-            Sofa.Gui.GUIManager.closeGUI()
-            print("GUI was closed")
 
-        print("Simulation is done.")
+
+                if not USE_GUI:
+                    for iteration in range(numSteps):
+                        # logging("Iteration: " + str(iteration))
+                        Sofa.Simulation.animate(root, root.dt.value)
+                        print(f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
+                else:
+                    # Find out the supported GUIs
+                    print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+                    # Launch the GUI (qt or qglviewer)
+                    Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+                    Sofa.Gui.GUIManager.createGUI(root, __file__)
+                    Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+                    # Initialization of the scene will be done here
+                    Sofa.Gui.GUIManager.MainLoop(root)
+                    Sofa.Gui.GUIManager.closeGUI()
+                    print("GUI was closed")
+
+                print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':

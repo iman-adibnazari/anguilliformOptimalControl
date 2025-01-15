@@ -1,3 +1,7 @@
 
 --- NEW SESSION: 03/06/2024 12:41:48 ---
 /body/planarConstraint.showObject = 0
+
+--- NEW SESSION: 28/06/2024 09:13:59 ---
+/body/planarConstraint.indices = 4 7 0 0
+/body/planarConstraint.showObject = 1
