@@ -1,4 +1,4 @@
-''' Generates several ROMs of varying dimensions and saves them to directory at npz and mat formats'''
+''' Generates several ROMs of varying dimensions and saves them to directory in npz and mat formats'''
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
@@ -35,8 +35,11 @@ if __name__ == "__main__":
     n_timesteps = 1000 # Number of timesteps to pull from each episode
     dt = 0.01
     startTrial = 39 # Episode to start training on
-    n_train = 1 # Number of training episodes
-    ns_ROM = np.arange(2,202,2) # Dimensions of ROM state space
+    # Training Trials 
+    train_trials = [16, 35, 39]#[0,1,3,4,5,6,7,8,11,12,13,14,15,16,18,19,20,22,23,24,26,27,28,29,30,31,32,33,35,36,37,39]#[0, 1, 4, 5, 7, 8, 11, 14, 16, 18, 20, 22, 24, 28, 31, 32, 33, 35, 37, 39]#[1, 5, 11, 18, 37, 39]## #[39]
+    n_train = len(train_trials) # Number of training trials
+    # n_train = 1 # Number of training episodes
+    ns_ROM = np.arange(2,22,2) # Dimensions of ROM state space
 
 
 
@@ -51,25 +54,26 @@ if __name__ == "__main__":
     data = h5py.File(filepath+ "FreqSweepDataset.hdf5", 'r')
     print(list(data.keys()))
     X_fom = da.from_array(data["stateData"], chunks=(4096, 4096,1))
-    X_fom = X_fom[:,:,startTrial:startTrial+n_train]
+    X_fom = X_fom[:,:,train_trials]
     U_fom = da.from_array(data["inputData"], chunks=(4096, 4096,1))
-    U_fom = U_fom[:,:,startTrial:startTrial+n_train]
+    U_fom = U_fom[:,:,train_trials]
     Y_fom = da.from_array(data["outputData"], chunks=(4096, 4096,1))
-    Y_fom = Y_fom[:,:,startTrial:startTrial+n_train]
-    x0 = data["stateData"][:,0,startTrial]
-    y0 = data["outputData"][:,0,startTrial]
+    Y_fom = Y_fom[:,:,train_trials]
+    x0 = data["stateData"][:,0,train_trials[0]]
+    y0 = data["outputData"][:,0,train_trials[0]]
     n = X_fom.shape[0]
     l = U_fom.shape[0]
     m = Y_fom.shape[0]
-    # # Collect initial condition offsets for each episode and center each episode
+    # # Collect initial condition offsets for each episode and center each episode about that initial condition
     X0 = da.zeros((n,n_train))
     Y0 = da.zeros((m,n_train))
     for i in range(n_train):
         X0[:,i] = X_fom[:,0,i]
         Y0[:,i] = Y_fom[:,0,i]
-        X_fom[:,:,i] = X_fom[:,:,i] - X0[:,i].reshape(-1,1)
-        Y_fom[:,:,i] = Y_fom[:,:,i] - Y0[:,i].reshape(-1,1)
     print("Done loading in data.")
+    X_fom = X_fom - X0[:,0].reshape(-1,1,1)
+    Y_fom = Y_fom - Y0[:,0].reshape(-1,1,1)
+
 
     # Get length of robot from min and max of x coords
     xzCoords = Y0[:,0].reshape(-1,2)
@@ -88,7 +92,7 @@ if __name__ == "__main__":
     # print("Shape of Y_fom: ", Y_fom.shape)
 
 
-    ####### Generate ROMs for Each Method #######
+    ##### Generate ROMs for Each Method #######
     # OKID + ERA
     print("Generating OKID + ERA ROMs...")
     U_era = U_fom[:,:,0]
@@ -148,7 +152,6 @@ if __name__ == "__main__":
         Sigma_tilde_is = da.linalg.inv(da.sqrt(S)) # inverse squareroot of sigma matrix
         Sigma_tilde_sqrt = da.sqrt(S) # squareroot of sigma matrix
 
-
         Em = da.concatenate([da.eye(l),da.zeros((l*(N-1),l))],axis=0)
         Ep = da.concatenate([da.eye(m),da.zeros((m*(N-1),m))],axis=0)
 
@@ -172,10 +175,10 @@ if __name__ == "__main__":
     print("Generating DMDc ROMs...")
     print("got here 1")
     # Initialize data matrices for training and testing
-    X_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
-    Xprime_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
-    Upsilon_train = da.zeros((l,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
-    Y_train = da.zeros((m,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))
+    X_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096, (n_timesteps-1)*n_train))#4096))#
+    Xprime_train = da.zeros((n,(n_timesteps-1)*n_train), chunks=(4096,  (n_timesteps-1)*n_train))#4096))#
+    Upsilon_train = da.zeros((l,(n_timesteps-1)*n_train), chunks=(4096,  (n_timesteps-1)*n_train))#4096))#
+    Y_train = da.zeros((m,(n_timesteps-1)*n_train), chunks=(4096,  (n_timesteps-1)*n_train))#4096))#
     print("got here 2")
     # Load in data from training episodes
     for i in range(n_train):
@@ -207,9 +210,8 @@ if __name__ == "__main__":
     for n_ROM in ns_ROM:
         # Decompose snapshot matrix using truncated SVD
         r_dmd = n_ROM
-        p_dmd = (n_timesteps-1)*n_train# dimension of reduced input space
-
-        # print("got here 5")
+        p_dmd = np.min([1000,(n_timesteps-1)*n_train])
+        #(n_timesteps-1)*n_train# dimension of reduced input space
         U_tilde,Sigma_tilde,Vh_tilde = da.linalg.svd(Omega)
         # Truncate SVD matrices to form rank p_dmd approximation
         U_tilde = U_tilde[:,0:p_dmd]
@@ -248,15 +250,6 @@ if __name__ == "__main__":
         # Execute computations for dmdc system matrices
         print("Computing DMDc system matrices for n_ROM = ", n_ROM)
         A_dmdc, B_dmdc, C_dmdc,U_hat = da.compute(A_dmdc, B_dmdc, C_dmdc,U_hat)
-        # A_dmdc, B_dmdc = da.compute(A_dmdc, B_dmdc)
-        # A_dmdc = A_dmdc.compute()
-        # print("got here 10")
-        # B_dmdc = B_dmdc.compute()
-        # print("got here 11")
-        # C_dmdc = C_dmdc.compute()
-        # print("got here 12")
-        # U_hat = U_hat.compute()
-        # print("got here 13")
         basis_dmdc = U_hat[:,0:n_ROM]
         # Save system matrices, projection mappings, and initial offset into file for later use
         np.savez(romDir+f"dmdcSystemMatrices_{n_ROM}dim_{n_train}train.npz", A_dmdc=A_dmdc, B_dmdc=B_dmdc, C_dmdc=C_dmdc, x0=x0, y0=y0, basis_dmdc=basis_dmdc)
@@ -267,8 +260,9 @@ if __name__ == "__main__":
     # ####### Generate LOpInf ROMs From Given Operators #######
     # print("Generating LOpInf ROMs...")
     # # Read in .mat file for LOpInf ROM
-    # lOpInfMats = scipy.io.loadmat(romDir + "lopinf_rom_operators_shifted.mat")
-    # lOpInfbases = scipy.io.loadmat(romDir+'lopinf_shifted_basis_nkt_3.mat')
+    # lOpInfMats = scipy.io.loadmat(romDir + "lopinf_rom_operators_trial39Train.mat")
+    # lOpInfbases = scipy.io.loadmat(romDir+'lopinf_rom_operators_trial39Train.mat')
+    # print(lOpInfMats.keys())
     # nROMs_LOpInf = np.array([2,4,6,8,10]) # Dimensions of original LOpInf models
     # U_fom = U_fom.compute()
     # for i in range(len(nROMs_LOpInf)):
@@ -312,4 +306,3 @@ if __name__ == "__main__":
     #     np.savez(romDir+f"lopinfSystemMatrices_{n_ROM}dim_{n_train}train.npz", A_lopinf=A_lopinf_dt, B_lopinf=B_lopinf_dt, C_lopinf=C_lopinf_dt, D_lopinf=D_lopinf_dt, x0=x0, y0=y0, basis_lopinf=basis_lopinf)
     #     # save as .mat file
     #     scipy.io.savemat(romDir+f"lopinfSystemMatrices_{n_ROM}dim_{n_train}train.mat", mdict={'A_lopinf': A_lopinf_dt, 'B_lopinf': B_lopinf_dt, 'C_lopinf': C_lopinf_dt, 'D_lopinf': D_lopinf_dt, 'x0': x0, 'y0': y0, 'basis_lopinf': basis_lopinf})
-
