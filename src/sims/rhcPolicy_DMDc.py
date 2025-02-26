@@ -78,7 +78,7 @@ class rhcPolicy_DMDc():
         self.du = cp.Variable((m, T))
         self.y = cp.Variable((p, T + 1))
         self.y_ref = cp.Parameter((p, T + 1))
-        self.u_max = 0.008
+        self.u_max = 0.1 # maximum input
         # Costs and constraints
         cost = 0
         constr = []
@@ -96,15 +96,18 @@ class rhcPolicy_DMDc():
             # # Only apply cost for odd output indices to penalize the z trajectory error
             # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
             # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
-            cost += 0.03*cp.sum_squares(self.y[15:23:2,t+1]-self.y_ref[15:23:2,t+1])
+            cost += 1.1*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            cost += 0.35*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            cost += 0.1*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            cost += 0.05*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
 
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 1700*cp.sum_squares(self.du[:, t])
-            cost += 1600*cp.sum_squares(self.u[:, t+1])
+            cost+= 1650*cp.sum_squares(self.du[:, t])
+            cost += 1500*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1]] #+ self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]
@@ -128,14 +131,14 @@ class rhcPolicy_DMDc():
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='GUROBI', verbose=True)
+        self.rhcOpt.solve(solver='GUROBI', verbose=False) # verbose=True
         end = time.time()
         # get first control input
         controlInput = self.u.value[:,1]
-        logging.info("ControlOptimization")
-        logging.info('controlInput: {}'.format(controlInput.squeeze()))
+        # logging.info("ControlOptimization")
+        # logging.info('controlInput: {}'.format(controlInput.squeeze()))
         print('controlInput: {}'.format(controlInput.squeeze()))
-        logging.info('Optimization time: {}'.format(end-start))
+        # logging.info('Optimization time: {}'.format(end-start))
         # update timestep
         self.time += self.dt
         return controlInput

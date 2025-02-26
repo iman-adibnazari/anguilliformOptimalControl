@@ -15,6 +15,10 @@ from stateEstimator_DMDc import stateEstimator_DMDc
 from centralizedPolicy_sinusoid import centralizedPolicy_sinusoid
 import logging
 import h5py
+import psycopg2
+from psycopg2.extras import execute_values
+import pickle
+import time
 
 config = dotenv_values(".env")
 ''' 
@@ -22,19 +26,62 @@ deltaT - timestep
 policy - function handle for the control policy p(x,t) where x is the full state vector and t is time
 saveOutput - 0 to not save the outputs and 1 to save the outputs in npy files
 '''
+def get_db_connection():
+    conn = psycopg2.connect(
+        dbname='simDB',
+        user='user',
+        password='password',
+        host='localhost',
+        port='5432'
+    )
+    return conn
+
+
+def insert_simulation_data(trial_id, timestep, simulation_time,x_hat,y_ref, input_data, output_data, state_data):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Serialize NumPy arrays
+    input_data_bin = pickle.dumps(input_data)
+    output_data_bin = pickle.dumps(output_data)
+    state_data_bin = pickle.dumps(state_data)
+    x_hat_bin = pickle.dumps(x_hat)
+    y_ref_bin = pickle.dumps(y_ref)
+    
+    # Insert data into the database
+    cur.execute(
+        '''
+        INSERT INTO simulation_data 
+        (trial_id, timestep, simulation_time, x_hat, y_ref, input_data, output_data, state_data) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''',
+        (trial_id, timestep, simulation_time,psycopg2.Binary(x_hat_bin), psycopg2.Binary(y_ref_bin), psycopg2.Binary(input_data_bin), psycopg2.Binary(output_data_bin), psycopg2.Binary(state_data_bin))
+    )
+    print("Inserted timestep "+timestep.__str__() + " into database")
+    conn.commit()
+    cur.close()
+    conn.close()
+
 class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
-    def __init__(self,deltaT,chambers,segments, saveOutput, *args, **kwargs):
+    def __init__(self,deltaT,chambers,segments, saveOutput,expParams, *args, **kwargs):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
         self.step_id = 0 
         self.length = 1114.1947932504659 # mm
-        self.T = 1300 # prediction horizon
+        self.T = 1000 # prediction horizon
         self.deltaT = deltaT
         self.chambers = chambers
         self.saveOutput=saveOutput
         self.segments = segments
-        self.rhcPolicy =  centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")#rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_DMDc(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat")
+        self.modelName = expParams["modelName"]
+        self.ref_a_max = expParams["ref_a_max"]
+        self.ref_omega = expParams["ref_omega"]
+        self.ref_k = expParams["ref_k"]
+        self.rhcPolicy =  rhcPolicy_DMDc(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_DMDc(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
+        self.conn = get_db_connection()
+        self.trial_id = expParams["trial_id"]
+        # self.expParams = expParams
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
         # self.pressureConstraint = self.node.getObject('SurfacePressureConstraint')
@@ -81,7 +128,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         return y_ref
     
     # Helper function to define reference trajectories using reference coords function above
-    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=7,x_shift = 0,z_shift = 0, T=1, dt = 0.001, *args, **kwargs):
+    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=7,x_shift = 0,z_shift = 0, T=1, dt = 0.01, *args, **kwargs):
         '''
         T - time horizon of reference trajectory
         '''
@@ -99,7 +146,15 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
         # get full centerline vector
         centerlinePts_full = np.empty((1,3))
+        fullState = np.empty((1,3))
         for ind,segment in enumerate(self.segments): 
+
+            with segment.state.position.writeableArray() as wa:
+                if ind ==0:
+                    fullState = wa 
+                else: 
+                    fullState = np.concatenate((fullState,wa))
+
 
             with segment.centerline_roi.indices.writeableArray() as indices:
 
@@ -110,8 +165,8 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
                     else: 
                         centerlinePts_full = np.concatenate((centerlinePts_full,temp))
         # Save centerline data for debugging
-        filename = config["currentDirectory"]+"data/centerlineData/"+"debug" + "_step_" + self.step_id.__str__() + ".npy"
-        np.save(filename,centerlinePts_full)
+        # filename = config["currentDirectory"]+"data/centerlineData/"+"debug" + "_step_" + self.step_id.__str__() + ".npy"
+        # np.save(filename,centerlinePts_full)
         ######### compute reduced output vector #########
         points = centerlinePts_full # centerline data
         centerline_t = points # make sure centerline is in the right shape
@@ -149,7 +204,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
         # form matrix that iterates between x and z coordinates - this is the reduced centerline representation we use!
         redCenterline = np.concatenate((xRed.reshape(-1,1),zRed.reshape(-1,1)),axis=1).flatten()
-        print(redCenterline)
+        # print(redCenterline)
         # If first timestep then record centerline offset vector
         if self.step_id == 0:
             self.redCenterlineOffset = redCenterline
@@ -164,10 +219,17 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ######### solve ROM MPC optimization for control input #########
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=20, omega = 6.28, k=6.28, dt = 0.001)  #31.42 12.57
+        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
         # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
-        pressures = self.rhcPolicy.getAction(0,0 ,pressures)
+
+
+
+        # TODO: Save everything to database
+        if self.saveOutput:
+            # Save output to database
+            insert_simulation_data(self.trial_id, self.step_id, t,x_hat,y_ref[:,0], pressures, redCenterline, fullState)
+
 
         # pressures = np.array([0.2,0,0.2,0,0.2,0])
         # Set pressure constraints

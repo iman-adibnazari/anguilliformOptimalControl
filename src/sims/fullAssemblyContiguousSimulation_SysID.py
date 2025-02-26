@@ -25,9 +25,6 @@ import pickle
 
 config = dotenv_values(".env")
 
-saveVTKs = True # Set to True to save VTK files
-
-
 lowAmp = 0.02
 highAmp = 0.08
 allAmplitudes = [
@@ -222,13 +219,6 @@ def createScene(rootNode, expParams):
     body.addObject('ParallelTetrahedronFEMForceField', template='Vec3d', name='FEM', method='large', poissonRatio=bodyPoisson, youngModulus="@Young5.outputValues")
     body.addObject('UniformMass', totalMass=bodyMass)
 
-    ################################################
-    # VTKExporter                               #
-    ################################################
-    if saveVTKs:
-        body.addObject('VTKExporter', filename=config["currentDirectory"] + f"data/visualizations/tempMeshes/Trial{expParams['trial_id']}_step", edges="0", triangles="1", quads="0", tetras="0", pointsDataFields="state.position", exportAtBegin="1", exportEveryNumberOfSteps="1")
-
-
 
     # ##################################################
     # # head/visual                                #
@@ -305,7 +295,7 @@ def createScene(rootNode, expParams):
     chamber0_0.addObject('BarycentricMapping', name='mapping', mapForces=False, mapMasses=False, template='Vec3d,Vec3d')
 
 
-    # chamber0_0.addObject(PressureConstrasrc/sims/fullAssemblyContiguousSimulation_ROMPC.pyintController(dt,policy_c00,savePressureInputs,chamber0_0,name="chamber0_0Controller"))
+    # chamber0_0.addObject(PressureConstraintController(dt,policy_c00,savePressureInputs,chamber0_0,name="chamber0_0Controller"))
 
     ##################################################
     # segment0/chamber1                            #
@@ -475,7 +465,7 @@ def createScene(rootNode, expParams):
     # ##################################################
     # # Attach pressure controller                     #
     # ##################################################
-    rootNode.addObject(PressureConstraintController_fullBodyROMPC(expParams['dt'], chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],expParams=expParams, saveOutput = True))
+    rootNode.addObject(PressureConstraintController_fullBodySysID(expParams['dt'], chambers=[chamber0_0, chamber0_1, chamber1_0, chamber1_1, chamber2_0, chamber2_1],segments = [body],expParams=expParams, saveOutput = True))
 
     # ##################################################
     # # Set up data recording                          #
@@ -492,64 +482,63 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    TimeHorizon = 15 # seconds
+    TimeHorizon = 10 # seconds
     speedups = [1] #1, 2, 5, 10
     USE_GUI = False
-    ref_a_max = 10  # mm 
-    ref_omega = (6.28*0.9)
-    ref_k=(6.28*0.8)
-    romName = "dmdcSystemMatricesAndGains_8dim_1train"
-    # for speedup in speedups:
-    #     for amplitudes in allAmplitudes:
-    #         for freq in allFrequencies:
+    for speedup in speedups:
+        for amplitudes in allAmplitudes:
+            for freq in allFrequencies:
 
-    # Generate the root node
-    root = Sofa.Core.Node("root")
-    # Call the above function to create the scene graph
-    # Connect to the database
-    conn = get_db_connection()
+                # Generate the root node
+                root = Sofa.Core.Node("root")
+                # Call the above function to create the scene graph
+                # Connect to the database
+                conn = get_db_connection()
 
-    
-    dt = 0.01
-    numSteps = int(TimeHorizon/dt)
+                
+                dt = 0.01*speedup
+                numSteps = int(TimeHorizon/dt)
+                # amplitudes = 2*[0.008*speedup, 0.008*speedup, 0.008*speedup]
+                frequencies = [freq, freq, freq]
+                phases = [0, -120, -240]
 
+                # Save Trial MetaData in Database
+                trial_name = f"TimestepTest_Speedup{speedup}"
+                # put experimental parameters in description
+                if USE_GUI:
+                    description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}"
+                else:
+                    description = f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+                trial_id = setup_trial(conn, trial_name, description)
+                print(f"New trial created with ID: {trial_id}")
+                # Stuff experiment parameters and metadata into dictionary
+                expParams = {"dt": dt, "amplitudes": amplitudes, "frequencies": frequencies, "phases": phases, "trial_id": trial_id, "conn": conn}
+                createScene(root, expParams)
 
-    # Save Trial MetaData in Database
-    trial_name = f"ControlTrial: {romName}"
-    # put experimental parameters in description
-    if USE_GUI:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-    else:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-    trial_id = setup_trial(conn, trial_name, description)
-    print(f"New trial created with ID: {trial_id}")
-    # Stuff experiment parameters and metadata into dictionary
-    expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName}
-    createScene(root, expParams)
-
-    # Once defined, initialization of the scene graph
-    Sofa.Simulation.init(root)
+                # Once defined, initialization of the scene graph
+                Sofa.Simulation.init(root)
 
 
 
-    if not USE_GUI:
-        for iteration in range(numSteps):
-            # logging("Iteration: " + str(iteration))
-            Sofa.Simulation.animate(root, root.dt.value)
-            print(f"dt: {dt}")#, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
-    else:
-        # Find out the supported GUIs
-        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-        # Launch the GUI (qt or qglviewer)
-        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-        Sofa.Gui.GUIManager.createGUI(root, __file__)
-        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-        # Initialization of the scene will be done here
-        Sofa.Gui.GUIManager.MainLoop(root)
-        Sofa.Gui.GUIManager.closeGUI()
-        print("GUI was closed")
 
-    print("Simulation is done.")
+                if not USE_GUI:
+                    for iteration in range(numSteps):
+                        # logging("Iteration: " + str(iteration))
+                        Sofa.Simulation.animate(root, root.dt.value)
+                        print(f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
+                else:
+                    # Find out the supported GUIs
+                    print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+                    # Launch the GUI (qt or qglviewer)
+                    Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+                    Sofa.Gui.GUIManager.createGUI(root, __file__)
+                    Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+                    # Initialization of the scene will be done here
+                    Sofa.Gui.GUIManager.MainLoop(root)
+                    Sofa.Gui.GUIManager.closeGUI()
+                    print("GUI was closed")
+
+                print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':
