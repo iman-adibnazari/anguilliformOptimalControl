@@ -87,19 +87,14 @@ class rhcPolicy_DMDc():
         constr+= [self.y[:, 0] == self.C @ self.x[:, 0]] #+ self.D @ self.u[:, 0]]
 
         for t in range(T):
-            # Apply cost for output trajectory
-            
-            # Penalize all outputs
-            # cost += 0.0001*cp.sum_squares(self.y[:,t+1]-self.y_ref[:,t+1])
-
-            
-            # # Only apply cost for odd output indices to penalize the z trajectory error
-            # cost += 0.0002*cp.sum_squares(self.y[1::2,t+1]-self.y_ref[1::2,t+1])
-            # Only apply cost for odd output indices in the latter half of the fish to penalize the z trajectory error for the back of the fish
-            cost += 1.1*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
-            cost += 0.35*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            # Apply cost for output trajectory      
+            # Only apply cost for odd output indices to penalize the z trajectory error
+            cost += 0.5*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            cost += 0.7*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
             cost += 0.1*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
             cost += 0.05*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            cost += 0.01*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
+
 
             # # Regularize how far the x trajectory is from the origin
             # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
