@@ -67,7 +67,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         Sofa.Core.Controller.__init__(self, *args, **kwargs)
         self.step_id = 0 
         self.length = 1114.1947932504659 # mm
-        self.T = 1000 # prediction horizon
+        self.T = 499 # prediction horizon
         self.deltaT = deltaT
         self.chambers = chambers
         self.saveOutput=saveOutput
@@ -76,8 +76,8 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.ref_a_max = expParams["ref_a_max"]
         self.ref_omega = expParams["ref_omega"]
         self.ref_k = expParams["ref_k"]
-        self.rhcPolicy =  rhcPolicy_LOpInf(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_LOpInf(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
+        self.rhcPolicy =  rhcPolicy_DMDc(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_DMDc(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         self.conn = get_db_connection()
         self.trial_id = expParams["trial_id"]
@@ -139,6 +139,16 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
             # Generate reference coordinates
             y_ref[:,i] = self.generateReferenceCoords(time = time+i*dt,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
         return y_ref
+
+    # Function to generate feasible trajectories from training data
+    def generateFeasibleReferenceTrajectory(self, startTimeStep, numSteps, trialNumber):
+        # Read in file
+        filename = config["currentDirectory"]+"data/archivedDataSets/ContiguousAssembly/OutputTrajectories.pkl"
+        # Load in pickle
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+        return data[:,startTimeStep:startTimeStep+numSteps,trialNumber]
+
 
     def onAnimateBeginEvent(self, e):
         t=self.step_id*self.deltaT # get current time step
@@ -217,10 +227,18 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         x_hat = self.stateEstimator.updateState(u0,y)
 
         ######### solve ROM MPC optimization for control input #########
+        ### Generate reference trajectory ###
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
-        # y_ref = np.zeros((self.n_redCenterline*2,self.T+1))
-        y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
-        # y_ref = y_ref - self.redCenterlineOffset.reshape(-1,1)
+        
+        ## Bioinspired reference trajectories
+        # y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
+        
+        ## Feasible reference trajectories from training dataset
+        y_ref = self.generateFeasibleReferenceTrajectory(startTimeStep=self.step_id, numSteps=self.T+1, trialNumber=39)
+
+
+        ### Solve optimization problem ###
+
         pressures = self.rhcPolicy.getAction(x_hat,y_ref,pressures)
 
 

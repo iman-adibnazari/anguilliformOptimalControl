@@ -490,13 +490,13 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    TimeHorizon = 15 # seconds
+    TimeHorizon = 5 # seconds
     speedups = [1] #1, 2, 5, 10
     USE_GUI = False
-    ref_a_max = 20  # mm 
+    ref_a_max = 10  # mm 
     ref_omega = (6.28*0.9)
     ref_k=(6.28*0.8)
-    romName = "lopinfSystemMatricesAndGains_8dim_1train"
+    romName = "dmdcSystemMatricesAndGains_16dim_1train"
     # for speedup in speedups:
     #     for amplitudes in allAmplitudes:
     #         for freq in allFrequencies:
