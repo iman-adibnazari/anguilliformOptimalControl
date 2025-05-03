@@ -88,13 +88,11 @@ class rhcPolicy_LOpInf():
 
         for t in range(T):
             # Apply cost for output trajectory
-            # Only apply cost for odd output indices to penalize the z trajectory error
-            cost += 0.3*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
-            cost += 0.4*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
-            cost += 0.3*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
-            cost += 0.1*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
-            cost += 0.05*cp.sum_squares(self.y[15:25:2,t+1]-self.y_ref[15:25:2,t+1])
-            cost += 0.025*cp.sum_squares(self.y[25:39:2,t+1]-self.y_ref[25:39:2,t+1])
+            cost += 0.7*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            cost += 0.65*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            cost += 0.65*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            cost += 0.5*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            cost += 0.4*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
 
 
             # # Regularize how far the x trajectory is from the origin
@@ -102,8 +100,24 @@ class rhcPolicy_LOpInf():
 
             # if t % 2 == 1:
             # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
-            cost+= 100000*cp.sum_squares(self.du[:, t])
-            cost += 80000*cp.sum_squares(self.u[:, t+1])
+            cost+= 1800*cp.sum_squares(self.du[:, t])
+            cost += 1500*cp.sum_squares(self.u[:, t+1])
+            # # Only apply cost for odd output indices to penalize the z trajectory error
+            # cost += 0.3*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            # cost += 0.4*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            # cost += 0.3*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            # cost += 0.1*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            # cost += 0.05*cp.sum_squares(self.y[15:25:2,t+1]-self.y_ref[15:25:2,t+1])
+            # cost += 0.025*cp.sum_squares(self.y[25:39:2,t+1]-self.y_ref[25:39:2,t+1])
+
+
+            # # # Regularize how far the x trajectory is from the origin
+            # # cost_era += 0.1*cp.sum_squares(y_era[0::2,t+1]-y_ref[0::2,t+1])
+
+            # # if t % 2 == 1:
+            # # cost_era += cp.sum_squares(y_era[:, t + 1]-y_ref[:,t+1])#+ cp.sum_squares(u[:, t])
+            # cost+= 100000*cp.sum_squares(self.du[:, t])
+            # cost += 80000*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1]] #+ self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]

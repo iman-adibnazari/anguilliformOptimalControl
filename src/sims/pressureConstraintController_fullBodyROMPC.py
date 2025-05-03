@@ -76,11 +76,13 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.ref_a_max = expParams["ref_a_max"]
         self.ref_omega = expParams["ref_omega"]
         self.ref_k = expParams["ref_k"]
-        self.rhcPolicy =  rhcPolicy_DMDc(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
-        self.stateEstimator = stateEstimator_DMDc(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
+        self.rhcPolicy =  rhcPolicy_LOpInf(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
+        self.stateEstimator = stateEstimator_LOpInf(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
         self.conn = get_db_connection()
         self.trial_id = expParams["trial_id"]
+        self.isTrainingTrial = expParams["isTrainingTrial"]
+        self.trainingTrialInd = expParams["trainingTrialInd"]
         # self.expParams = expParams
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
@@ -230,11 +232,13 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         ### Generate reference trajectory ###
         # Get reference trajectory in centered frame - The output is ordered such the tip of the tail is in the first spot and the tip of the head is in the last spot. ordering is [x1,z1,x2,z2,...,xn,zn]
         
-        ## Bioinspired reference trajectories
-        # y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
-        
-        ## Feasible reference trajectories from training dataset
-        y_ref = self.generateFeasibleReferenceTrajectory(startTimeStep=self.step_id, numSteps=self.T+1, trialNumber=39)
+
+        if self.isTrainingTrial:
+            ## Feasible reference trajectories from training dataset
+            y_ref = self.generateFeasibleReferenceTrajectory(startTimeStep=self.step_id, numSteps=self.T+1, trialNumber=self.trainingTrialInd)
+        else:
+            ## Bioinspired reference trajectories
+            y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
 
 
         ### Solve optimization problem ###
@@ -243,7 +247,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
 
 
-        # TODO: Save everything to database
+        # Save everything to database
         if self.saveOutput:
             # Save output to database
             insert_simulation_data(self.trial_id, self.step_id, t,x_hat,y_ref[:,0], pressures, redCenterline, fullState)
