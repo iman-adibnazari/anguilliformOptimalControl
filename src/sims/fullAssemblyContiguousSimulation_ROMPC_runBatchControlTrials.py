@@ -496,60 +496,63 @@ def main():
     ref_a_max = 10  # mm 
     ref_omega = (6.28*0.9)
     ref_k=(6.28*0.8)
+    trainingTrialInd = 0
     isTrainingTrial = True
-    trainingTrialNumbers = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
-    romName = "lopinfSystemMatricesAndGains_18dim_3train"
-    # for speedup in speedups:
-    #     for amplitudes in allAmplitudes:
-    #         for freq in allFrequencies:
+    trainingTrialIndices = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+    romName = "dmdcSystemMatricesAndGains_18dim_2train"
+    for trainingTrialInd in trainingTrialIndices:
+        #     for amplitudes in allAmplitudes:
+        #         for freq in allFrequencies:
 
-    # Generate the root node
-    root = Sofa.Core.Node("root")
-    # Call the above function to create the scene graph
-    # Connect to the database
-    conn = get_db_connection()
+        # Generate the root node
+        root = Sofa.Core.Node("root")
+        # Call the above function to create the scene graph
+        # Connect to the database
+        conn = get_db_connection()
+        dt = 0.01
+        numSteps = int(TimeHorizon/dt)
+        # Save Trial MetaData in Database
+        trial_name = f"ControlTrial: {romName}"
+        # put experimental parameters in description
+        if USE_GUI:
+            if isTrainingTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+            else:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        else:
+            if isTrainingTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+            else:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        trial_id = setup_trial(conn, trial_name, description)
+        print(f"New trial created with ID: {trial_id}")
+        # Stuff experiment parameters and metadata into dictionary
+        expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd}
+        createScene(root, expParams)
 
-    
-    dt = 0.01
-    numSteps = int(TimeHorizon/dt)
-
-
-    # Save Trial MetaData in Database
-    trial_name = f"ControlTrial: {romName}"
-    # put experimental parameters in description
-    if USE_GUI:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-    else:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-    trial_id = setup_trial(conn, trial_name, description)
-    print(f"New trial created with ID: {trial_id}")
-    # Stuff experiment parameters and metadata into dictionary
-    expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName}
-    createScene(root, expParams)
-
-    # Once defined, initialization of the scene graph
-    Sofa.Simulation.init(root)
+        # Once defined, initialization of the scene graph
+        Sofa.Simulation.init(root)
 
 
 
-    if not USE_GUI:
-        for iteration in range(numSteps):
-            # logging("Iteration: " + str(iteration))
-            Sofa.Simulation.animate(root, root.dt.value)
-            print(f"dt: {dt}")#, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
-    else:
-        # Find out the supported GUIs
-        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-        # Launch the GUI (qt or qglviewer)
-        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-        Sofa.Gui.GUIManager.createGUI(root, __file__)
-        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-        # Initialization of the scene will be done here
-        Sofa.Gui.GUIManager.MainLoop(root)
-        Sofa.Gui.GUIManager.closeGUI()
-        print("GUI was closed")
+        if not USE_GUI:
+            for iteration in range(numSteps):
+                # logging("Iteration: " + str(iteration))
+                Sofa.Simulation.animate(root, root.dt.value)
+                print(f"dt: {dt}")#, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
+        else:
+            # Find out the supported GUIs
+            print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+            # Launch the GUI (qt or qglviewer)
+            Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+            Sofa.Gui.GUIManager.createGUI(root, __file__)
+            Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+            # Initialization of the scene will be done here
+            Sofa.Gui.GUIManager.MainLoop(root)
+            Sofa.Gui.GUIManager.closeGUI()
+            print("GUI was closed")
 
-    print("Simulation is done.")
+        print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':

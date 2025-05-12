@@ -497,8 +497,9 @@ def main():
     ref_omega = (6.28*0.9)
     ref_k=(6.28*0.8)
     isTrainingTrial = True
+    trainingTrialInd = 35
     trainingTrialNumbers = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
-    romName = "lopinfSystemMatricesAndGains_18dim_3train"
+    romName = "dmdcSystemMatricesAndGains_18dim_2train"
     # for speedup in speedups:
     #     for amplitudes in allAmplitudes:
     #         for freq in allFrequencies:
@@ -524,7 +525,7 @@ def main():
     trial_id = setup_trial(conn, trial_name, description)
     print(f"New trial created with ID: {trial_id}")
     # Stuff experiment parameters and metadata into dictionary
-    expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName}
+    expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd}
     createScene(root, expParams)
 
     # Once defined, initialization of the scene graph
