@@ -89,16 +89,24 @@ class rhcPolicy_ERA():
         for t in range(T):
             # Apply cost for output trajectory
             # Only apply cost for odd output indices to penalize the z trajectory error
-            cost += 0.1*cp.sum_squares(self.y[1:5:2,t+1]-self.y_ref[1:5:2,t+1])
-            cost += 0.8*cp.sum_squares(self.y[5:7:2,t+1]-self.y_ref[5:7:2,t+1])
-            cost += 0.8*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
-            cost += 0.05*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
-            cost += 0.05*cp.sum_squares(self.y[15:25:2,t+1]-self.y_ref[15:25:2,t+1])
-            cost += 0.025*cp.sum_squares(self.y[25:39:2,t+1]-self.y_ref[25:39:2,t+1])
+            cost += 0.6*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            cost += 0.6*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            cost += 0.6*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            cost += 0.6*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            cost += 0.6*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
 
+            cost+= 1600*cp.sum_squares(self.du[:, t])
+            cost += 1500*cp.sum_squares(self.u[:, t+1])            
+            # Only apply cost for odd output indices to penalize the z trajectory error
+            # cost += 0.1*cp.sum_squares(self.y[1:5:2,t+1]-self.y_ref[1:5:2,t+1])
+            # cost += 0.8*cp.sum_squares(self.y[5:7:2,t+1]-self.y_ref[5:7:2,t+1])
+            # cost += 0.8*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            # cost += 0.05*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            # cost += 0.05*cp.sum_squares(self.y[15:25:2,t+1]-self.y_ref[15:25:2,t+1])
+            # cost += 0.025*cp.sum_squares(self.y[25:39:2,t+1]-self.y_ref[25:39:2,t+1])
 
-            cost+= 90000*cp.sum_squares(self.du[:, t])
-            cost += 1500*cp.sum_squares(self.u[:, t+1])
+            # cost+= 90000*cp.sum_squares(self.du[:, t])
+            # cost += 1500*cp.sum_squares(self.u[:, t+1])
             constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t+1], cp.norm(self.u[:, t+1], "inf") <= self.u_max]
             constr += [self.y[:, t + 1] == self.C @ self.x[:, t + 1] + self.D @ self.u[:, t+1]]
             constr += [self.u[:, t+1] == self.u[:, t] + self.du[:, t]]

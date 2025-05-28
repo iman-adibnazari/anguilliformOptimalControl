@@ -25,7 +25,7 @@ import pickle
 
 config = dotenv_values(".env")
 
-saveVTKs = True # Set to True to save VTK files
+saveVTKs = False # Set to True to save VTK files
 
 
 lowAmp = 0.02
@@ -113,7 +113,7 @@ tailPoisson = 0.42
 ##################################################
 # Save/visualization parameters                  #
 ##################################################
-recordPressureInputs =False
+recordPressureInputs = False
 recordFullState = False
 recordCenterline = False
 recordInputs = False     
@@ -498,7 +498,7 @@ def main():
     ref_k=(6.28*0.8)
     trainingTrialInd = 0
     isTrainingTrial = True
-    trainingTrialIndices = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+    trainingTrialIndices = [3, 5, 11, 16, 18, 21, 25, 32, 35, 38, 39] #9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33, #8 #[1,2,3,4,5,6,7,
     romName = "dmdcSystemMatricesAndGains_18dim_2train"
     for trainingTrialInd in trainingTrialIndices:
         #     for amplitudes in allAmplitudes:

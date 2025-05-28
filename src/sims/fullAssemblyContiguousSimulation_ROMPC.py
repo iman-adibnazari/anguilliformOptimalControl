@@ -25,7 +25,7 @@ import pickle
 
 config = dotenv_values(".env")
 
-saveVTKs = True # Set to True to save VTK files
+saveVTKs = False # Set to True to save VTK files
 
 
 lowAmp = 0.02
@@ -497,8 +497,8 @@ def main():
     ref_omega = (6.28*0.9)
     ref_k=(6.28*0.8)
     isTrainingTrial = True
-    trainingTrialInd = 35
-    trainingTrialNumbers = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+    trainingTrialInd = 0
+    trainingTrialIndices = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
     romName = "dmdcSystemMatricesAndGains_18dim_2train"
     # for speedup in speedups:
     #     for amplitudes in allAmplitudes:
@@ -519,9 +519,15 @@ def main():
     trial_name = f"ControlTrial: {romName}"
     # put experimental parameters in description
     if USE_GUI:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        if isTrainingTrial:
+            description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+        else:
+            description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
     else:
-        description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        if isTrainingTrial:
+            description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+        else:
+            description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
     trial_id = setup_trial(conn, trial_name, description)
     print(f"New trial created with ID: {trial_id}")
     # Stuff experiment parameters and metadata into dictionary
