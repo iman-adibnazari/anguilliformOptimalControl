@@ -130,7 +130,7 @@ class rhcPolicy_ERA():
         self.y_ref.value = y_ref
         # solve optimization problem
         start = time.time()
-        self.rhcOpt.solve(solver='GUROBI', verbose=True)
+        self.rhcOpt.solve(solver='GUROBI', verbose=False)
         end = time.time()
         # get first control input
         controlInput = self.u.value[:,1]
