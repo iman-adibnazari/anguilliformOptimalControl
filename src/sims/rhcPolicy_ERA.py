@@ -95,6 +95,13 @@ class rhcPolicy_ERA():
             cost += 0.6*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
             cost += 0.6*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
 
+
+            # cost += 0.6*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
+
             cost+= 1600*cp.sum_squares(self.du[:, t])
             cost += 1500*cp.sum_squares(self.u[:, t+1])            
             # Only apply cost for odd output indices to penalize the z trajectory error

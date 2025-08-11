@@ -76,6 +76,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.ref_a_max = expParams["ref_a_max"]
         self.ref_omega = expParams["ref_omega"]
         self.ref_k = expParams["ref_k"]
+        self.ref_alpha = expParams["ref_alpha"]
         self.rhcPolicy =  rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat") #centralizedPolicy_sinusoid(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForRAL_goodMatParams/ROMsWithObserverGains/dmdcSystemMatricesAndGains_4dim_3train.mat") #rhcPolicy_randomizedOutput(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat") #rhcPolicy_ERA(deltaT,T=self.T, systemMatFile = config["currentDirectory"]+"data/archivedDataSets/FullAssembly_Constrained_FullSetForICRA/romSystemMatricesAndGains_22dim_3train_2test.mat")
         self.stateEstimator = stateEstimator_ERA(deltaT, logResults = True, systemMatFile = config["currentDirectory"]+f"data/archivedDataSets/ContiguousAssembly/ROMsWithObserverGains/{self.modelName}.mat")
         self.pressureConstraints = [chamber.getObject('SurfacePressureConstraint') for chamber in self.chambers]
@@ -83,6 +84,8 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         self.trial_id = expParams["trial_id"]
         self.isTrainingTrial = expParams["isTrainingTrial"]
         self.trainingTrialInd = expParams["trainingTrialInd"]
+        self.isPhysRobotTrial = expParams["isPhysRobotTrial"]
+        self.physRobotTrialInd = expParams["physRobotTrialInd"]
         # self.expParams = expParams
         for pressureConstraint in self.pressureConstraints:
             pressureConstraint.value = [0]
@@ -99,12 +102,12 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
 
     # helper function to define reference trajectories
     # Function to provide coordinates of discretized centerline at a given time
-    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=3,x_shift = 0,z_shift = 0):
+    def generateReferenceCoords(self, time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=3,alpha =1.0,x_shift = 0,z_shift = 0):
         # Generate 10 times number of x coordinates as desired points
         x = np.linspace(0,l,numPoints*1000)
         dx = x[1]-x[0]
         # Compute integrand of arc length integral
-        integrand = np.sqrt(1+(a_max/l*(np.exp(x/l-1)*(k*np.cos(k/l*x+omega*time)-np.sin(-k/l*x+omega*time))))**2)
+        integrand = np.sqrt(1+(a_max/l*(np.exp(alpha*(x/l-1))*(k*np.cos(k/l*x+omega*time)-alpha*np.sin(-k/l*x+omega*time))))**2)
         # Use first order quadrature to compute integral
         integrand = integrand*dx
         integrand = np.cumsum(integrand)
@@ -117,7 +120,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
             idx = np.argmin(np.abs(integrand-larc_des[i]))
             x_ref[i] = x[idx]-x_ref_0[i] # We subtract off the initial x coordinate to make the first point at the origin
             # Compute z value at this point
-            z_ref[i] = a_max*np.exp(x[idx]/l-1)*np.sin(k*x[idx]/l-omega*time)
+            z_ref[i] = a_max*np.exp(alpha*(x[idx]/l-1))*np.sin(k*x[idx]/l-omega*time)
         # z = z-z[0]
         x_ref = x_ref+x_shift
         z_ref = z_ref+z_shift
@@ -130,7 +133,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         return y_ref
     
     # Helper function to define reference trajectories using reference coords function above
-    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=7,x_shift = 0,z_shift = 0, T=1, dt = 0.01, *args, **kwargs):
+    def generateReferenceTrajectory(self,time,numPoints=20,a_max=10,l=1114.1947932504659,k=4,omega=7,alpha =1.0,x_shift = 0,z_shift = 0, T=1, dt = 0.01, *args, **kwargs):
         '''
         T - time horizon of reference trajectory
         '''
@@ -139,7 +142,7 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         # Loop over time horizon
         for i in range(T):
             # Generate reference coordinates
-            y_ref[:,i] = self.generateReferenceCoords(time = time+i*dt,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
+            y_ref[:,i] = self.generateReferenceCoords(time = time+i*dt,numPoints=numPoints,a_max=a_max,l=l,k=k,omega=omega,alpha=alpha,x_shift=x_shift,z_shift=z_shift).reshape(-1,1).squeeze()
         return y_ref
 
     # Function to generate feasible trajectories from training data
@@ -151,6 +154,14 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
             data = pickle.load(f)
         return data[:,startTimeStep:startTimeStep+numSteps,trialNumber]
 
+    # Function to generate trajectories from physical robot experiments
+    def generateExpRobotReferenceTrajectory(self, startTimeStep,bias, numSteps, trialNumber):
+        # Read in file
+        filename = config["currentDirectory"]+"data/archivedDataSets/ContiguousAssembly/experimentalRefTrajectories.h5"
+        # Load in h5 file
+        with h5py.File(filename, 'r') as f:
+            data = f['refsUncentered'][:]
+        return data[trialNumber,startTimeStep+bias:startTimeStep+numSteps+bias,:].T
 
     def onAnimateBeginEvent(self, e):
         t=self.step_id*self.deltaT # get current time step
@@ -236,9 +247,11 @@ class PressureConstraintController_fullBodyROMPC(Sofa.Core.Controller):
         if self.isTrainingTrial:
             ## Feasible reference trajectories from training dataset
             y_ref = self.generateFeasibleReferenceTrajectory(startTimeStep=self.step_id, numSteps=self.T+1, trialNumber=self.trainingTrialInd)
+        elif self.isPhysRobotTrial:
+            y_ref = self.generateExpRobotReferenceTrajectory(startTimeStep=self.step_id, bias=500, numSteps=self.T+1, trialNumber=self.physRobotTrialInd)
         else:
             ## Bioinspired reference trajectories
-            y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, k=self.ref_k, dt = 0.01)  #31.42 12.57
+            y_ref = self.generateReferenceTrajectory(time = t,T = self.T+1,a_max=self.ref_a_max, omega = self.ref_omega, alpha=self.ref_alpha, k=self.ref_k, dt = 0.01)  #31.42 12.57
 
 
         ### Solve optimization problem ###

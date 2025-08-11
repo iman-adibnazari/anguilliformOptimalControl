@@ -2,6 +2,7 @@ import Sofa
 import Sofa.Gui
 import Sofa.Simulation
 import numpy as np
+import h5py
 import SofaRuntime
 from fullStateRecorder import Exporter
 
@@ -26,6 +27,22 @@ import pickle
 config = dotenv_values(".env")
 
 saveVTKs = False # Set to True to save VTK files
+
+
+lowAmp = 0.02
+highAmp = 0.08
+allAmplitudes = [
+                # [lowAmp,0,0],
+				# [0,lowAmp,0],
+				# [0,0,lowAmp],
+				# [lowAmp,lowAmp,lowAmp],
+				# [highAmp ,0,0],
+				# [0,highAmp,0],
+				[0,0,highAmp],
+				[highAmp,highAmp,highAmp],
+				]
+allFrequencies = [0.1,0.3,0.5,1,1.5]
+# allFrequencies = [1.5]
 
 # Helper functions for database connection and data writing
 def get_db_connection():
@@ -474,75 +491,81 @@ def createScene(rootNode, expParams):
 
 
 def main():
-    TimeHorizon = 10 # seconds
-    # speedups = [1] #1, 2, 5, 10
+    TimeHorizon = 10 # simulation length (seconds)
+    speedups = [1] #1, 2, 5, 10
     USE_GUI = False
-    ref_a_maxs = [30] #[10, 30]
-    ref_omegas = [6.28*0.5, 6.28*1.0] #[6.28*1.0]#
-    ref_ks = [6.28*0.5, 6.28*1.0, 6.28*1.5]
-    ref_alphas = [3.5]
-    # ref_a_max = 10  # mm 
-    # ref_omega = (6.28*0.9)
-    # ref_k=(6.28*0.8)
+    ref_a_max = 10  # mm 
+    ref_omega = (6.28*0.9)
+    ref_k=(6.28*0.8)
     trainingTrialInd = 0
-    isTrainingTrial = False 
-    isPhysRobotTrial = False
+    isTrainingTrial = False
+    isPhysRobotTrial = True
+    physRobotTrialInds = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]# 
+    trialParamString = ''
     romName = "eraSystemMatricesAndGains_10dim_1train"
-    for ref_a_max in ref_a_maxs:
-        for ref_omega in ref_omegas:
-            for ref_k in ref_ks:
-                for ref_alpha in ref_alphas:
-                    #     for amplitudes in allAmplitudes:
-                    #         for freq in allFrequencies:
-                    # Generate the root node
-                    root = Sofa.Core.Node("root")
-                    # Call the above function to create the scene graph
-                    # Connect to the database
-                    conn = get_db_connection()
-                    dt = 0.01
-                    numSteps = int(TimeHorizon/dt)
-                    # Save Trial MetaData in Database
-                    trial_name = f"BioinspiredControlTrial_{romName}_{ref_a_max}_{ref_omega}_{ref_k}_{ref_alpha}"
-                    # put experimental parameters in description
-                    if USE_GUI:
-                        if isTrainingTrial:
-                            description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
-                        else:
-                            description = f"BioinspiredControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}, alpha-{ref_alpha}, timeHorizon-{TimeHorizon}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-                    else:
-                        if isTrainingTrial:
-                            description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
-                        else:
-                            description = f"BioinspiredControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}, alpha-{ref_alpha}, timeHorizon-{TimeHorizon}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
-                    trial_id = setup_trial(conn, trial_name, description)
-                    print(f"New trial created with ID: {trial_id}")
-                    # Stuff experiment parameters and metadata into dictionary
-                    expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "ref_alpha": ref_alpha, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd, "isPhysRobotTrial": isPhysRobotTrial, "physRobotTrialInd": 0}
-                    createScene(root, expParams)
+    for trialInd in physRobotTrialInds:
+        #     for amplitudes in allAmplitudes:
+        #         for freq in allFrequencies:
+        # Generate the root node
+        root = Sofa.Core.Node("root")
+        # Call the above function to create the scene graph
+        # Connect to the database
+        conn = get_db_connection()
+        dt = 0.01
+        numSteps = int(TimeHorizon/dt)
+        # Save Trial MetaData in Database
+        if isPhysRobotTrial:
+            # Read in trial params from h5 file
+            physExpsFilename = config["currentDirectory"]+"data/archivedDataSets/ContiguousAssembly/experimentalRefTrajectories.h5"
+            # Load in h5 file
+            with h5py.File(physExpsFilename, 'r') as f:
+                trialParamString = f['trialParameters'][:].astype(str)[trialInd,0]
+            print(trialParamString)
+        trial_name = f"physRobotTracking_{trialParamString}: {romName}"
+        # put experimental parameters in description
+        if USE_GUI:
+            if isTrainingTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+            elif isPhysRobotTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: physRobotTrialInd-{trialInd}, params-{trialParamString}"
+            else:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        else:
+            if isTrainingTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: feasibleTrajectoryTrialNum-{trainingTrialInd}"
+            elif isPhysRobotTrial:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: physRobotTrialInd-{trialInd}, params-{trialParamString}"
+            else:
+                description = f"ControlTrial: Model-{romName}, refTrajParams: a_max-{ref_a_max}, omega-{ref_omega}, k-{ref_k}" #f"dt: {dt}, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, numSteps: {numSteps}"
+        trial_id = setup_trial(conn, trial_name, description)
+        print(f"New trial created with ID: {trial_id}")
+        # Stuff experiment parameters and metadata into dictionary
+        expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd, "isPhysRobotTrial": isPhysRobotTrial, "physRobotTrialInd": trialInd}
+        createScene(root, expParams)
 
-                    # Once defined, initialization of the scene graph
-                    Sofa.Simulation.init(root)
+        # Once defined, initialization of the scene graph
+        Sofa.Simulation.init(root)
 
 
 
-                    if not USE_GUI:
-                        for iteration in range(numSteps):
-                            # logging("Iteration: " + str(iteration))
-                            Sofa.Simulation.animate(root, root.dt.value)
-                            print(f"dt: {dt}")#, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
-                    else:
-                        # Find out the supported GUIs
-                        print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
-                        # Launch the GUI (qt or qglviewer)
-                        Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
-                        Sofa.Gui.GUIManager.createGUI(root, __file__)
-                        Sofa.Gui.GUIManager.SetDimension(1080, 1080)
-                        # Initialization of the scene will be done here
-                        Sofa.Gui.GUIManager.MainLoop(root)
-                        Sofa.Gui.GUIManager.closeGUI()
-                        print("GUI was closed")
+        if not USE_GUI:
+            for iteration in range(numSteps):
+                # logging("Iteration: " + str(iteration))
+                Sofa.Simulation.animate(root, root.dt.value)
+                print(f"dt: {dt}")#, amplitudes: {amplitudes}, frequencies: {frequencies}, phases: {phases}, Iteration: {iteration} out of {numSteps}")
+        else:
+            # Find out the supported GUIs
+            print ("Supported GUIs are: " + Sofa.Gui.GUIManager.ListSupportedGUI(","))
+            # Launch the GUI (qt or qglviewer)
+            Sofa.Gui.GUIManager.Init("myscene", "qglviewer")
+            Sofa.Gui.GUIManager.createGUI(root, __file__)
+            Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+            # Initialization of the scene will be done here
+            Sofa.Gui.GUIManager.MainLoop(root)
+            Sofa.Gui.GUIManager.closeGUI()
+            print("GUI was closed")
 
-                    print("Simulation is done.")
+        print("Simulation is done.")
 
 # Function used only if this script is called from a python environment, triggers the main()
 if __name__ == '__main__':
