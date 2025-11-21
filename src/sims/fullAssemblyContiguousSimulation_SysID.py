@@ -484,7 +484,7 @@ def createScene(rootNode, expParams):
 def main():
     TimeHorizon = 10 # seconds
     speedups = [1] #1, 2, 5, 10
-    USE_GUI = False
+    USE_GUI = True
     for speedup in speedups:
         for amplitudes in allAmplitudes:
             for freq in allFrequencies:

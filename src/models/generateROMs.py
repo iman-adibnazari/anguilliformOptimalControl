@@ -41,16 +41,14 @@ if __name__ == "__main__":
     # n_train = 1 # Number of training episodes
     ns_ROM = np.arange(2,22,2) # Dimensions of ROM state space
 
-
-
     ####### Set up filepaths #######
-    # Setup filepaths for reading data 
+    # Setup filepaths for reading data
     filepath = config["currentDirectory"] + "data/archivedDataSets/ContiguousAssembly/"
     romDir = config["currentDirectory"] + "data/archivedDataSets/ContiguousAssembly/ROMs/"
 
     ####### Load in data #######
     print("Loading in data...")
-    # Read in all training data 
+    # Read in all training data
     data = h5py.File(filepath+ "FreqSweepDataset.hdf5", 'r')
     print(list(data.keys()))
     X_fom = da.from_array(data["stateData"], chunks=(4096, 4096,1))

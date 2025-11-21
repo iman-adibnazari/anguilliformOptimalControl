@@ -88,11 +88,18 @@ class rhcPolicy_LOpInf():
 
         for t in range(T):
             # Apply cost for output trajectory
-            cost += 0.6*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
-            cost += 0.6*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
-            cost += 0.6*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
-            cost += 0.6*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
-            cost += 0.6*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
+            cost += 1.2*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            cost += 1.2*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            cost += 1.2*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            cost += 1.2*cp.sum_squares(self.y[11:21:2,t+1]-self.y_ref[11:21:2,t+1])
+            cost += 0.0*cp.sum_squares(self.y[21:39:2,t+1]-self.y_ref[21:39:2,t+1])
+
+
+            # cost += 0.6*cp.sum_squares(self.y[1:3:2,t+1]-self.y_ref[1:3:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[3:7:2,t+1]-self.y_ref[3:7:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[7:11:2,t+1]-self.y_ref[7:11:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[11:15:2,t+1]-self.y_ref[11:15:2,t+1])
+            # cost += 0.6*cp.sum_squares(self.y[15:39:2,t+1]-self.y_ref[15:39:2,t+1])
 
 
             # # Regularize how far the x trajectory is from the origin

@@ -25,7 +25,7 @@ import pickle
 
 config = dotenv_values(".env")
 
-saveVTKs = False # Set to True to save VTK files
+saveVTKs = True # Set to True to save VTK files
 
 
 lowAmp = 0.02
@@ -496,10 +496,12 @@ def main():
     ref_a_max = 10  # mm 
     ref_omega = (6.28*0.9)
     ref_k=(6.28*0.8)
+    ref_alpha = 3.5
     trainingTrialInd = 0
     isTrainingTrial = True
-    trainingTrialIndices = [3,5, 11, 16, 18, 21, 25, 32, 35, 38, 39]# #9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33, #8 #[1,2,3,4,5,6,7,
-    romName = "dmdcSystemMatricesAndGains_10dim_1train"
+    isPhysRobotTrial = False
+    trainingTrialIndices = [32]# 3, 5, 11, 16, 18, 21, 25, 32, 35, 38, 39  #9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33, #8 #[1,2,3,4,5,6,7,
+    romName = "lopinfSystemMatricesAndGains_18dim_3train"
     for trainingTrialInd in trainingTrialIndices:
         #     for amplitudes in allAmplitudes:
         #         for freq in allFrequencies:
@@ -511,7 +513,7 @@ def main():
         dt = 0.01
         numSteps = int(TimeHorizon/dt)
         # Save Trial MetaData in Database
-        trial_name = f"ControlTrial: {romName}"
+        trial_name = f"ControlTrial: {romName}, trial {trainingTrialInd}"
         # put experimental parameters in description
         if USE_GUI:
             if isTrainingTrial:
@@ -526,7 +528,7 @@ def main():
         trial_id = setup_trial(conn, trial_name, description)
         print(f"New trial created with ID: {trial_id}")
         # Stuff experiment parameters and metadata into dictionary
-        expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd}
+        expParams = {"dt": dt, "trial_id": trial_id, "conn": conn, "ref_a_max": ref_a_max, "ref_omega": ref_omega, "ref_k": ref_k, "ref_alpha": ref_alpha, "modelName": romName, "isTrainingTrial": isTrainingTrial, "trainingTrialInd": trainingTrialInd, "isPhysRobotTrial": isPhysRobotTrial, "physRobotTrialInd": 0}
         createScene(root, expParams)
 
         # Once defined, initialization of the scene graph
